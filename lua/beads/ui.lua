@@ -22,10 +22,61 @@ local task_list_bufnr = nil
 local task_list_winid = nil
 local current_tasks = {}
 
+-- Filter state
+local filter_state = {
+  priority = {},  -- P1, P2, P3
+  status = {},    -- open, in_progress, closed
+  assignee = {},  -- assignee names
+}
+
 --- Initialize UI
 function M.init()
   -- Create autocommand group for beads
   vim.api.nvim_create_augroup("beads_ui", { clear = true })
+end
+
+--- Get current filter state
+--- @return table Filter state with priority, status, and assignee
+function M.get_filter_state()
+  return vim.deepcopy(filter_state)
+end
+
+--- Set filter state
+--- @param new_state table New filter state
+function M.set_filter_state(new_state)
+  if new_state.priority then
+    filter_state.priority = new_state.priority
+  end
+  if new_state.status then
+    filter_state.status = new_state.status
+  end
+  if new_state.assignee then
+    filter_state.assignee = new_state.assignee
+  end
+end
+
+--- Clear all filters
+function M.clear_filters()
+  filter_state.priority = {}
+  filter_state.status = {}
+  filter_state.assignee = {}
+end
+
+--- Toggle filter value
+--- @param filter_type string Filter type: 'priority', 'status', or 'assignee'
+--- @param value string Value to toggle
+function M.toggle_filter(filter_type, value)
+  if not filter_state[filter_type] then
+    vim.notify("Invalid filter type: " .. filter_type, vim.log.levels.ERROR)
+    return
+  end
+
+  local idx = vim.tbl_contains(filter_state[filter_type], value)
+  if idx then
+    table.remove(filter_state[filter_type], idx)
+  else
+    table.insert(filter_state[filter_type], value)
+  end
 end
 
 --- Create a floating window for task list
