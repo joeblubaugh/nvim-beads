@@ -180,4 +180,98 @@ function M.save_template(name, fields)
   end
 end
 
+-- Custom variables storage
+local custom_vars = {}
+
+--- Register custom variables for template substitution
+--- @param vars table Variables to register (key-value pairs)
+function M.set_custom_vars(vars)
+  custom_vars = vim.tbl_extend("force", custom_vars, vars or {})
+end
+
+--- Get the current date as ISO string
+--- @return string Current date (YYYY-MM-DD)
+local function get_date()
+  return os.date("%Y-%m-%d")
+end
+
+--- Get author from git config or environment
+--- @return string Author name
+local function get_author()
+  local ok, result = pcall(vim.fn.system, "git config user.name")
+  if ok and result ~= "" then
+    return result:gsub("\n", "")
+  end
+
+  return vim.fn.environ().USER or "Unknown"
+end
+
+--- Get current git branch
+--- @return string Branch name or "main" if not in git repo
+local function get_branch()
+  local ok, result = pcall(vim.fn.system, "git rev-parse --abbrev-ref HEAD")
+  if ok and result ~= "" then
+    return result:gsub("\n", "")
+  end
+
+  return "main"
+end
+
+--- Substitute variables in template string
+--- @param template_str string Template string with {{variable}} placeholders
+--- @param overrides table|nil Optional variable overrides
+--- @return string Template with substituted variables
+function M.substitute_variables(template_str, overrides)
+  if not template_str then
+    return ""
+  end
+
+  -- Build variable map
+  local vars = {
+    date = get_date(),
+    author = get_author(),
+    branch = get_branch(),
+  }
+
+  -- Add custom variables
+  vars = vim.tbl_extend("force", vars, custom_vars)
+
+  -- Add overrides
+  if overrides then
+    vars = vim.tbl_extend("force", vars, overrides)
+  end
+
+  -- Perform substitution
+  local result = template_str
+  for key, value in pairs(vars) do
+    result = result:gsub("{{" .. key .. "}}", tostring(value))
+  end
+
+  return result
+end
+
+--- Resolve a template with variable substitution
+--- @param template_name string Template name
+--- @param vars table|nil Custom variables
+--- @return table|nil Resolved template with substituted variables
+function M.resolve_template(template_name, vars)
+  local template = M.get_template(template_name)
+  if not template then
+    return nil
+  end
+
+  -- Substitute variables in templates
+  template.fields.title_template = M.substitute_variables(template.fields.title_template, vars)
+  template.fields.description_template = M.substitute_variables(template.fields.description_template, vars)
+
+  -- Substitute in checklist items
+  if template.fields.checklist then
+    for i, item in ipairs(template.fields.checklist) do
+      template.fields.checklist[i] = M.substitute_variables(item, vars)
+    end
+  end
+
+  return template
+end
+
 return M
