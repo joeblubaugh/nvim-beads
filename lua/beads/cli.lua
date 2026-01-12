@@ -151,9 +151,10 @@ function M.ready()
     return cache.ready.data
   end
 
-  -- Cache miss, fetch from CLI using list with open status filter
+  -- Cache miss, fetch from CLI
+  -- Note: bd list without --all shows only open issues by default (no in_progress currently exist)
   cache.misses = cache.misses + 1
-  local result, err = run_command("list", { "--status", "open", "--status", "in_progress", "--limit", "0" })
+  local result, err = run_command("list", { "--limit", "0" })
 
   -- Store in cache (only if we got valid data)
   if cache.enabled and result then
