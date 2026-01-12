@@ -1,0 +1,83 @@
+-- Neovim commands for beads plugin
+
+local M = {}
+local cli = require("beads.cli")
+local ui = require("beads.ui")
+
+--- Setup Neovim commands
+function M.setup()
+  -- Main beads command - show task list
+  vim.api.nvim_create_user_command("Beads", function(opts)
+    ui.show_task_list()
+  end, { desc = "Show Beads task list" })
+
+  -- Create new task
+  vim.api.nvim_create_user_command("BeadsCreate", function(opts)
+    local title = opts.args
+    if title == "" then
+      vim.notify("Task title required", vim.log.levels.ERROR)
+      return
+    end
+    ui.create_task(title)
+  end, {
+    desc = "Create a new Beads task",
+    nargs = "+",
+  })
+
+  -- Show task details
+  vim.api.nvim_create_user_command("BeadsShow", function(opts)
+    local id = opts.args
+    if id == "" then
+      vim.notify("Task ID required", vim.log.levels.ERROR)
+      return
+    end
+    ui.show_task_detail(id)
+  end, {
+    desc = "Show details of a Beads task",
+    nargs = 1,
+  })
+
+  -- Update task
+  vim.api.nvim_create_user_command("BeadsUpdate", function(opts)
+    local args = vim.split(opts.args, " ")
+    if #args < 2 then
+      vim.notify("Usage: :BeadsUpdate <id> <field> <value>", vim.log.levels.ERROR)
+      return
+    end
+    local id = args[1]
+    local field = args[2]
+    local value = table.concat(args, " ", 3)
+    ui.update_task(id, field, value)
+  end, {
+    desc = "Update a Beads task",
+    nargs = "+",
+  })
+
+  -- Close task
+  vim.api.nvim_create_user_command("BeadsClose", function(opts)
+    local id = opts.args
+    if id == "" then
+      vim.notify("Task ID required", vim.log.levels.ERROR)
+      return
+    end
+    ui.close_task(id)
+  end, {
+    desc = "Close a Beads task",
+    nargs = 1,
+  })
+
+  -- Sync with remote
+  vim.api.nvim_create_user_command("BeadsSync", function(opts)
+    ui.sync()
+  end, { desc = "Sync with Beads remote" })
+
+  -- Refresh task list
+  vim.api.nvim_create_user_command("BeadsRefresh", function(opts)
+    ui.refresh_task_list()
+  end, { desc = "Refresh Beads task list" })
+end
+
+-- Initialize commands on load
+M.setup()
+
+return M

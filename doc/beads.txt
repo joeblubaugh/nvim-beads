@@ -1,0 +1,151 @@
+*beads.txt*  Task tracking with Beads in Neovim
+
+==============================================================================
+CONTENTS                                                         *beads-contents*
+
+1. Introduction ........................... |beads-introduction|
+2. Installation ........................... |beads-installation|
+3. Configuration .......................... |beads-configuration|
+4. Commands .............................. |beads-commands|
+5. Keymaps ............................... |beads-keymaps|
+6. Usage ................................. |beads-usage|
+7. API ................................... |beads-api|
+
+==============================================================================
+INTRODUCTION                                                  *beads-introduction*
+
+Beads is an AI-native, git-based issue tracking system. This plugin integrates
+Beads with Neovim, allowing you to manage tasks directly from your editor.
+
+Key features:
+- View and manage tasks from within Neovim
+- Git-native storage of tasks in .beads/ directory
+- CLI-first design optimized for automation
+- Real-time sync with Beads daemon
+- Floating window UI for task management
+
+For more information about Beads, visit: https://github.com/steveyegge/beads
+
+==============================================================================
+INSTALLATION                                                  *beads-installation*
+
+Using your favorite plugin manager (example with packer.nvim):
+
+    use 'joeblubaugh/nvim-beads'
+
+Or with vim-plug:
+
+    Plug 'joeblubaugh/nvim-beads'
+
+Requirements:
+- Neovim >= 0.5
+- Beads CLI (bd) installed and in PATH
+
+Initialize in your init.lua:
+
+    require('beads').setup()
+
+==============================================================================
+CONFIGURATION                                                *beads-configuration*
+
+The plugin can be configured by passing options to setup():
+
+    require('beads').setup({
+      keymaps = true,      -- Enable default keymaps (default: true)
+      auto_sync = true,    -- Auto-sync with daemon (default: true)
+      sync_interval = 5000 -- Sync interval in ms (default: 5000)
+    })
+
+All configuration is optional. The above shows the defaults.
+
+==============================================================================
+COMMANDS                                                        *beads-commands*
+
+:Beads                           Show the task list in a floating window
+
+:BeadsCreate {title}             Create a new task with the given title
+
+:BeadsShow {id}                  Show details of task with {id}
+
+:BeadsUpdate {id} {field} {value}
+                                 Update {field} of task {id} to {value}
+                                 Common fields: status, priority
+
+:BeadsClose {id}                 Mark task {id} as complete
+
+:BeadsSync                       Sync tasks with Beads daemon
+
+:BeadsRefresh                    Refresh the task list
+
+==============================================================================
+KEYMAPS                                                          *beads-keymaps*
+
+Default keymaps (when enabled in configuration):
+
+<leader>bd    Show task list (Beads)
+<leader>bc    Create new task
+<leader>bs    Sync with Beads
+<leader>br    Refresh task list
+
+In the task list window:
+q             Close the task list
+<CR>          View details of selected task
+r             Refresh task list
+
+==============================================================================
+USAGE                                                              *beads-usage*
+
+Basic workflow:
+
+1. Open the task list:
+   :Beads
+   or press <leader>bd
+
+2. View task details by pressing <CR> on a task
+
+3. Create a new task:
+   :BeadsCreate My new task
+   or press <leader>bc
+
+4. Update task status:
+   :BeadsUpdate nvim-beads-abc --status in_progress
+
+5. Close a completed task:
+   :BeadsClose nvim-beads-abc
+
+6. Sync with the remote:
+   :BeadsSync
+   or press <leader>bs
+
+==============================================================================
+API                                                                *beads-api*
+
+The plugin provides a Lua API for programmatic access:
+
+beads.setup({opts})              Initialize the plugin with options
+
+beads.get_config()               Get current configuration
+
+beads.beads()                    Get the CLI module for direct access
+
+CLI Module Functions:
+
+require('beads.cli').ready()                    Get list of ready tasks
+require('beads.cli').show({id})                 Get task details
+require('beads.cli').create({title}, {opts})   Create a task
+require('beads.cli').update({id}, {opts})      Update a task
+require('beads.cli').close({id})               Close a task
+require('beads.cli').sync()                    Sync with remote
+
+UI Module Functions:
+
+require('beads.ui').show_task_list()           Display floating task list
+require('beads.ui').show_task_detail({id})    Show task details in split
+require('beads.ui').create_task({title})      Create new task
+require('beads.ui').update_task({id}, {field}, {value})  Update task
+require('beads.ui').close_task({id})          Close task
+require('beads.ui').refresh_task_list()       Refresh displayed list
+require('beads.ui').sync()                    Sync tasks
+
+==============================================================================
+vim:tw=78:ts=8:noet:ft=help:norl:
