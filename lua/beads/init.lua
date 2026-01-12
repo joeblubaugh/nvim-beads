@@ -20,8 +20,8 @@ M.version = "0.1.0"
 -- Default configuration
 local defaults = {
   keymaps = true,
-  auto_sync = true,
-  sync_interval = 5000, -- milliseconds
+  auto_sync = false,     -- Disabled by default (causes lag spikes)
+  sync_interval = 10000, -- milliseconds (only used if auto_sync enabled)
   theme = "dark",        -- color theme: dark or light
   auto_theme = false,    -- auto-detect theme from background
 }

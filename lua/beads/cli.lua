@@ -66,9 +66,14 @@ end
 
 --- Check if cache entry is still valid
 --- @param entry_time number Last update time in milliseconds
+--- @param has_data boolean Whether cache has actual data
 --- @return boolean True if cache is still valid
-local function is_cache_valid(entry_time)
-  if not cache.enabled then
+local function is_cache_valid(entry_time, has_data)
+  if not cache.enabled or not has_data then
+    return false
+  end
+  -- entry_time of 0 means never cached
+  if entry_time == 0 then
     return false
   end
   local now = vim.loop.now()
@@ -129,7 +134,7 @@ end
 --- @return string|nil Error message
 function M.ready()
   -- Check cache first
-  if cache.enabled and is_cache_valid(cache.ready.time) then
+  if is_cache_valid(cache.ready.time, cache.ready.data ~= nil) then
     cache.hits = cache.hits + 1
     return cache.ready.data
   end
@@ -138,7 +143,7 @@ function M.ready()
   cache.misses = cache.misses + 1
   local result = run_command("ready")
 
-  -- Store in cache
+  -- Store in cache (only if we got valid data)
   if cache.enabled and result then
     cache.ready.data = result
     cache.ready.time = vim.loop.now()
@@ -153,7 +158,7 @@ end
 --- @return string|nil Error message
 function M.show(id)
   -- Check cache first
-  if cache.enabled and cache.show[id] and is_cache_valid(cache.show[id].time) then
+  if cache.show[id] and is_cache_valid(cache.show[id].time, cache.show[id].data ~= nil) then
     cache.hits = cache.hits + 1
     return cache.show[id].data
   end
@@ -162,7 +167,7 @@ function M.show(id)
   cache.misses = cache.misses + 1
   local result = run_command(string.format("show %s", id))
 
-  -- Store in cache
+  -- Store in cache (only if we got valid data)
   if cache.enabled and result then
     if not cache.show[id] then
       cache.show[id] = {}

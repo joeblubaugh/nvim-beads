@@ -37,20 +37,24 @@ function M.sync()
   end
 
   is_syncing = true
-  local ok, err = cli.sync()
-  is_syncing = false
 
-  if ok then
-    last_sync_time = os.time()
-    -- Call registered callbacks
-    for _, callback in ipairs(sync_callbacks) do
-      pcall(callback)
+  -- Run sync asynchronously via vim.schedule to prevent blocking the event loop
+  vim.schedule(function()
+    local ok, err = cli.sync()
+    is_syncing = false
+
+    if ok then
+      last_sync_time = os.time()
+      -- Call registered callbacks
+      for _, callback in ipairs(sync_callbacks) do
+        pcall(callback)
+      end
+    else
+      vim.notify("Sync failed: " .. (err or "unknown error"), vim.log.levels.WARN)
     end
-  else
-    vim.notify("Sync failed: " .. (err or "unknown error"), vim.log.levels.WARN)
-  end
+  end)
 
-  return ok
+  return true
 end
 
 --- Start periodic sync with the daemon
