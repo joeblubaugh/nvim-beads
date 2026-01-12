@@ -88,16 +88,28 @@ local function is_beads_available()
 end
 
 --- Run a beads command and return parsed JSON output
---- @param cmd string Command to run (e.g., "ready", "show:123")
+--- @param cmd string Command to run (e.g., "list", "show")
 --- @param args table|nil Optional arguments to pass
+--- @param json_flag boolean|nil Whether to add --json flag (default true)
 --- @return table|nil Parsed JSON output or nil on error
 --- @return string|nil Error message if command failed
-local function run_command(cmd, args)
+local function run_command(cmd, args, json_flag)
   if not is_beads_available() then
     return nil, "Beads CLI not found. Please install 'bd' or ensure it's in your PATH"
   end
 
+  -- Default to JSON for most commands (unless explicitly disabled)
+  if json_flag == nil then
+    json_flag = true
+  end
+
   local full_cmd = string.format("bd %s", cmd)
+
+  -- Add JSON flag
+  if json_flag then
+    full_cmd = full_cmd .. " --json"
+  end
+
   if args then
     for _, arg in ipairs(args) do
       full_cmd = full_cmd .. " " .. vim.fn.shellescape(arg)
@@ -125,11 +137,11 @@ local function run_command(cmd, args)
     return result
   end
 
-  -- Return raw output if not JSON
-  return output
+  -- If JSON parsing failed, return the raw output for debugging
+  return nil, "Failed to parse JSON from command '" .. cmd .. "': " .. output
 end
 
---- Get list of ready tasks
+--- Get list of ready tasks (open and in_progress)
 --- @return table|nil List of tasks
 --- @return string|nil Error message
 function M.ready()
@@ -139,9 +151,9 @@ function M.ready()
     return cache.ready.data
   end
 
-  -- Cache miss, fetch from CLI
+  -- Cache miss, fetch from CLI using list with open status filter
   cache.misses = cache.misses + 1
-  local result = run_command("ready")
+  local result, err = run_command("list", { "--status", "open", "--status", "in_progress", "--limit", "0" })
 
   -- Store in cache (only if we got valid data)
   if cache.enabled and result then
@@ -149,12 +161,12 @@ function M.ready()
     cache.ready.time = vim.loop.now()
   end
 
-  return result
+  return result, err
 end
 
 --- Show details of a specific task
 --- @param id string Task ID
---- @return table|nil Task details
+--- @return table|nil Task details or array with single task
 --- @return string|nil Error message
 function M.show(id)
   -- Check cache first
@@ -165,7 +177,7 @@ function M.show(id)
 
   -- Cache miss, fetch from CLI
   cache.misses = cache.misses + 1
-  local result = run_command(string.format("show %s", id))
+  local result, err = run_command("show", { id })
 
   -- Store in cache (only if we got valid data)
   if cache.enabled and result then
@@ -176,7 +188,7 @@ function M.show(id)
     cache.show[id].time = vim.loop.now()
   end
 
-  return result
+  return result, err
 end
 
 --- Create a new task
