@@ -135,7 +135,38 @@ require('beads').setup({
 
 " Sync with remote
 :BeadsSync
+
+" Filter tasks (examples)
+:BeadsFilter priority:P1
+:BeadsFilter status:open,in_progress
+:BeadsFilter priority:P1,status:open,assignee:alice
+
+" Clear all filters
+:BeadsClearFilters
 ```
+
+### Filtering
+
+Advanced filtering is supported with multiple filter types:
+
+**Filter Syntax:**
+```vim
+:BeadsFilter priority:P1,P2,P3
+:BeadsFilter status:open,in_progress,closed
+:BeadsFilter assignee:alice,bob
+:BeadsFilter priority:P1,status:open,assignee:alice
+```
+
+**Supported Filters:**
+- `priority` - Filter by task priority (P1, P2, P3)
+- `status` - Filter by status (open, in_progress, closed)
+- `assignee` - Filter by assignee name (fuzzy matching)
+
+**Features:**
+- Multiple filter values combined with OR within the same type
+- Different filter types combined with AND logic
+- Display shows filtered count (e.g., "5/12 tasks")
+- Clear visual indication of active filters
 
 ### Keymaps
 
@@ -145,11 +176,15 @@ With default configuration enabled:
 - `<leader>bc` - Create new task
 - `<leader>bs` - Sync tasks
 - `<leader>br` - Refresh task list
+- `<leader>bf` - Open filter prompt
+- `<leader>bF` - Clear all filters
 
 In task list:
 - `q` - Close window
 - `<CR>` - View task details
 - `r` - Refresh list
+- `f` - Open filter input dialog
+- `c` - Clear all filters
 
 ## Plugin Architecture
 
@@ -158,6 +193,7 @@ In task list:
 - **`lua/beads/init.lua`** - Main plugin module, configuration and setup
 - **`lua/beads/cli.lua`** - Beads CLI command wrapper
 - **`lua/beads/ui.lua`** - UI components (floating windows, buffers)
+- **`lua/beads/filters.lua`** - Task filtering logic
 - **`lua/beads/commands.lua`** - Neovim user commands
 - **`lua/beads/keymaps.lua`** - Default keymaps
 
