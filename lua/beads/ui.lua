@@ -351,11 +351,6 @@ end
 function M.find_task()
   local fuzzy = require("beads.fuzzy")
 
-  if not fuzzy.is_available() then
-    vim.notify("No fuzzy finder available. Install telescope.nvim or fzf-lua", vim.log.levels.WARN)
-    return
-  end
-
   -- Fetch tasks
   local tasks, err = cli.ready()
   if not tasks then
@@ -385,11 +380,6 @@ end
 function M.find_task_status()
   local fuzzy = require("beads.fuzzy")
 
-  if not fuzzy.is_available() then
-    vim.notify("No fuzzy finder available. Install telescope.nvim or fzf-lua", vim.log.levels.WARN)
-    return
-  end
-
   -- Fetch the currently viewed task (from buffer context)
   vim.ui.input({ prompt = "Enter task ID: " }, function(task_id)
     if not task_id or task_id == "" then
@@ -413,11 +403,6 @@ end
 --- Find and set task priority using fuzzy finder
 function M.find_task_priority()
   local fuzzy = require("beads.fuzzy")
-
-  if not fuzzy.is_available() then
-    vim.notify("No fuzzy finder available. Install telescope.nvim or fzf-lua", vim.log.levels.WARN)
-    return
-  end
 
   -- Fetch the currently viewed task (from buffer context)
   vim.ui.input({ prompt = "Enter task ID: " }, function(task_id)

@@ -21,18 +21,25 @@ local M = {}
 local finders = {
   telescope = nil,
   fzf_lua = nil,
+  builtin = nil,
 }
 
--- Current finder backend (defaults to telescope if available)
+-- Current finder backend (defaults to telescope if available, then fzf-lua, then builtin)
 local current_finder = nil
 
 --- Initialize the fuzzy finder module
 --- Attempts to load available fuzzy finder implementations
 function M.init()
+  -- Always available: builtin vim.ui.select
+  finders.builtin = require("beads.fuzzy_builtin")
+  if not current_finder then
+    current_finder = "builtin"
+  end
+
   -- Try loading telescope
   if pcall(require, "telescope") then
     finders.telescope = require("beads.fuzzy_telescope")
-    if not current_finder then
+    if current_finder == "builtin" then
       current_finder = "telescope"
     end
   end
@@ -40,18 +47,14 @@ function M.init()
   -- Try loading fzf-lua
   if pcall(require, "fzf-lua") then
     finders.fzf_lua = require("beads.fuzzy_fzf")
-    if not current_finder then
+    if current_finder == "builtin" then
       current_finder = "fzf_lua"
     end
-  end
-
-  if not current_finder then
-    vim.notify("No fuzzy finder available. Install telescope.nvim or fzf-lua", vim.log.levels.WARN)
   end
 end
 
 --- Set the preferred fuzzy finder backend
---- @param backend string Finder name: "telescope" or "fzf_lua"
+--- @param backend string Finder name: "telescope", "fzf_lua", or "builtin"
 function M.set_finder(backend)
   if finders[backend] then
     current_finder = backend
