@@ -339,6 +339,37 @@ function M.create_task(title)
   })
 end
 
+--- Parse title and description from editor buffer lines
+local function parse_editor_content(lines)
+  local parsed_title = ""
+  local parsed_description = ""
+  local in_title = false
+  local in_description = false
+
+  for i, line in ipairs(lines) do
+    if line == "## Title" then
+      in_title = true
+      in_description = false
+    elseif line == "## Description" then
+      in_title = false
+      in_description = true
+    elseif line == "---" then
+      break
+    elseif in_title and line ~= "" then
+      parsed_title = line
+      in_title = false
+    elseif in_description and line ~= "---" then
+      if parsed_description == "" then
+        parsed_description = line
+      else
+        parsed_description = parsed_description .. "\n" .. line
+      end
+    end
+  end
+
+  return parsed_title, parsed_description
+end
+
 --- Show interactive editor for task creation or editing
 --- @param mode string "create" or "edit"
 --- @param initial_data table Initial task data {title, description, id, priority, from_template}
@@ -380,9 +411,9 @@ function M.show_task_editor(mode, initial_data)
   table.insert(content, "---")
   table.insert(content, "")
   table.insert(content, "Instructions:")
-  table.insert(content, "- Edit title and description above")
-  table.insert(content, "- Write (`:w`) to " .. (mode == "create" and "create task" or "save changes"))
-  table.insert(content, "- Quit (`:q`) without writing to cancel")
+  table.insert(content, "- Edit title and description above the --- line")
+  table.insert(content, "- Press <C-s> to " .. (mode == "create" and "create task" or "save changes"))
+  table.insert(content, "- Press <C-c> or :q to cancel")
 
   -- Set buffer content
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
@@ -391,88 +422,69 @@ function M.show_task_editor(mode, initial_data)
   vim.cmd("split")
   vim.api.nvim_set_current_buf(bufnr)
 
+  -- Helper function to handle save/create
+  local function handle_save()
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    local parsed_title, parsed_description = parse_editor_content(lines)
+
+    -- Validate input
+    if parsed_title == "" then
+      vim.notify("Title cannot be empty", vim.log.levels.ERROR)
+      return
+    end
+
+    -- Create or update task
+    if mode == "create" then
+      local opts = {
+        description = parsed_description,
+      }
+      if from_template then
+        opts.priority = priority
+      end
+      local result, err = cli.create(parsed_title, opts)
+      if not result then
+        vim.notify("Failed to create task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+        return
+      end
+      local msg = from_template and "Created task from template: " or "Created task: "
+      vim.notify(msg .. parsed_title, vim.log.levels.INFO)
+    else
+      local update_opts = {}
+      if parsed_title ~= title then
+        vim.notify("Note: Title cannot be changed after creation", vim.log.levels.WARN)
+      end
+      if parsed_description ~= description then
+        update_opts.description = parsed_description
+      end
+
+      if next(update_opts) then
+        local result, err = cli.update(task_id, update_opts)
+        if not result then
+          vim.notify("Failed to update task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+          return
+        end
+        vim.notify("Updated task: " .. task_id, vim.log.levels.INFO)
+      end
+    end
+
+    -- Close the buffer
+    vim.cmd("quit")
+  end
+
   -- Setup keymaps for this buffer
   local opts = { noremap = true, silent = true, buffer = bufnr }
 
-  -- Setup save handler
-  vim.api.nvim_create_autocmd("BufWriteCmd", {
-    buffer = bufnr,
-    callback = function()
-      local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  -- Ctrl-S to save/create
+  vim.keymap.set("n", "<C-s>", handle_save, opts)
+  vim.keymap.set("i", "<C-s>", function()
+    vim.cmd("stopinsert")
+    handle_save()
+  end, opts)
 
-      -- Parse title and description from buffer
-      local parsed_title = ""
-      local parsed_description = ""
-      local in_title = false
-      local in_description = false
-
-      for i, line in ipairs(lines) do
-        if line == "## Title" then
-          in_title = true
-          in_description = false
-        elseif line == "## Description" then
-          in_title = false
-          in_description = true
-        elseif line == "---" then
-          break
-        elseif in_title and line ~= "" then
-          parsed_title = line
-          in_title = false
-        elseif in_description and line ~= "---" then
-          if parsed_description == "" then
-            parsed_description = line
-          else
-            parsed_description = parsed_description .. "\n" .. line
-          end
-        end
-      end
-
-      -- Validate input
-      if parsed_title == "" then
-        vim.notify("Title cannot be empty", vim.log.levels.ERROR)
-        return
-      end
-
-      -- Create or update task
-      if mode == "create" then
-        local opts = {
-          description = parsed_description,
-        }
-        if from_template then
-          opts.priority = priority
-        end
-        local result, err = cli.create(parsed_title, opts)
-        if not result then
-          vim.notify("Failed to create task: " .. (err or "unknown error"), vim.log.levels.ERROR)
-          return
-        end
-        local msg = from_template and "Created task from template: " or "Created task: "
-        vim.notify(msg .. parsed_title, vim.log.levels.INFO)
-      else
-        local update_opts = {}
-        if parsed_title ~= title then
-          -- Note: bd doesn't support updating title directly, only via description
-          -- So we'll update description instead
-          vim.notify("Note: Title cannot be changed after creation", vim.log.levels.WARN)
-        end
-        if parsed_description ~= description then
-          update_opts.description = parsed_description
-        end
-
-        if next(update_opts) then
-          local result, err = cli.update(task_id, update_opts)
-          if not result then
-            vim.notify("Failed to update task: " .. (err or "unknown error"), vim.log.levels.ERROR)
-            return
-          end
-          vim.notify("Updated task: " .. task_id, vim.log.levels.INFO)
-        end
-      end
-
-      -- Close the buffer
-      vim.cmd("quit")
-    end
-  })
+  -- Ctrl-C or :q to cancel
+  vim.keymap.set("n", "<C-c>", function()
+    vim.cmd("quit")
+  end, opts)
 
   -- Position cursor in title field
   vim.api.nvim_win_set_cursor(0, { 3, 0 })
