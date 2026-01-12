@@ -17,6 +17,7 @@
 local M = {}
 local cli = require("beads.cli")
 local filters = require("beads.filters")
+local theme = require("beads.theme")
 
 -- UI state
 local task_list_bufnr = nil
@@ -131,6 +132,9 @@ local function create_float_window()
   vim.api.nvim_win_set_option(winid, "cursorline", true)
   vim.api.nvim_win_set_option(winid, "number", false)
 
+  -- Apply theme highlight groups to window
+  vim.api.nvim_win_set_option(winid, "winhighlight", "Normal:BeadsNormal,Border:BeadsBorder,CursorLine:BeadsTaskListSelected")
+
   return bufnr, winid
 end
 
@@ -141,6 +145,28 @@ local function format_task(task)
   local status_symbol = (task.status == "closed" or task.status == "complete") and "✓" or "○"
   local priority = task.priority or "P2"
   return string.format("%s [%s] [%s] %s: %s", status_symbol, priority, task.id, task.status or "open", task.title or task.name)
+end
+
+--- Get highlight group for task based on status
+--- @param task table Task object
+--- @return string Highlight group name
+local function get_task_highlight(task)
+  local status = task.status or "open"
+  if status == "in_progress" then
+    return "BeadsTaskInProgress"
+  elseif status == "closed" or status == "complete" then
+    return "BeadsTaskClosed"
+  else
+    return "BeadsTaskOpen"
+  end
+end
+
+--- Get highlight group for priority
+--- @param priority string Priority level
+--- @return string Highlight group name
+local function get_priority_highlight(priority)
+  priority = priority or "P2"
+  return "BeadsPriority" .. priority
 end
 
 --- Show the task list in a floating window
