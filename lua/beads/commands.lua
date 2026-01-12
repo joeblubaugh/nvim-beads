@@ -112,6 +112,36 @@ function M.setup()
   end, {
     desc = "Clear all active filters",
   })
+
+  -- Find and select task with fuzzy finder
+  vim.api.nvim_create_user_command("BeadsFindTask", function(opts)
+    ui.find_task()
+  end, { desc = "Find and select a task using fuzzy finder" })
+
+  -- Find and update task status with fuzzy finder
+  vim.api.nvim_create_user_command("BeadsFindStatus", function(opts)
+    ui.find_task_status()
+  end, { desc = "Find and update task status with fuzzy finder" })
+
+  -- Find and update task priority with fuzzy finder
+  vim.api.nvim_create_user_command("BeadsFindPriority", function(opts)
+    ui.find_task_priority()
+  end, { desc = "Find and update task priority with fuzzy finder" })
+
+  -- Set fuzzy finder backend
+  vim.api.nvim_create_user_command("BeadsSetFinder", function(opts)
+    local backend = opts.args
+    if backend == "" then
+      vim.notify("Usage: :BeadsSetFinder telescope|fzf_lua|builtin", vim.log.levels.ERROR)
+      return
+    end
+    local fuzzy = require("beads.fuzzy")
+    fuzzy.set_finder(backend)
+    vim.notify("Fuzzy finder backend set to: " .. backend, vim.log.levels.INFO)
+  end, {
+    desc = "Set preferred fuzzy finder backend (telescope, fzf_lua, or builtin)",
+    nargs = 1,
+  })
 end
 
 -- Initialize commands on load

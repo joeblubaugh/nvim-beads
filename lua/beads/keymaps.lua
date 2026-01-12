@@ -37,6 +37,15 @@ function M.setup()
 
   -- Clear filters
   vim.keymap.set("n", "<leader>bF", ":BeadsClearFilters<CR>", vim.tbl_extend("force", opts, { desc = "Beads: Clear Filters" }))
+
+  -- Fuzzy find task
+  vim.keymap.set("n", "<leader>bt", ":BeadsFindTask<CR>", vim.tbl_extend("force", opts, { desc = "Beads: Find Task" }))
+
+  -- Fuzzy update status
+  vim.keymap.set("n", "<leader>bS", ":BeadsFindStatus<CR>", vim.tbl_extend("force", opts, { desc = "Beads: Find Status" }))
+
+  -- Fuzzy update priority
+  vim.keymap.set("n", "<leader>bP", ":BeadsFindPriority<CR>", vim.tbl_extend("force", opts, { desc = "Beads: Find Priority" }))
 end
 
 return M
