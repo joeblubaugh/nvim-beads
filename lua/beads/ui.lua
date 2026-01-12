@@ -330,15 +330,152 @@ function M.show_task_detail(id)
   vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
 end
 
---- Create a new task
---- @param title string Task title
+--- Create a new task with interactive buffer editor
+--- @param title string|nil Initial task title (optional)
 function M.create_task(title)
-  local result, err = cli.create(title)
-  if result then
-    vim.notify("Created task: " .. title, vim.log.levels.INFO)
-  else
-    vim.notify("Failed to create task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+  M.show_task_editor("create", {
+    title = title or "",
+    description = "",
+  })
+end
+
+--- Show interactive editor for task creation or editing
+--- @param mode string "create" or "edit"
+--- @param initial_data table Initial task data {title, description, id, priority, from_template}
+function M.show_task_editor(mode, initial_data)
+  initial_data = initial_data or {}
+  local title = initial_data.title or ""
+  local description = initial_data.description or ""
+  local task_id = initial_data.id
+  local priority = initial_data.priority or "P2"
+  local from_template = initial_data.from_template or false
+
+  -- Create a new buffer for editing
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
+  vim.api.nvim_buf_set_option(bufnr, "bufhidden", "delete")
+  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+  vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
+
+  -- Prepare content with instructions
+  local content = {}
+  table.insert(content, "# Task " .. (mode == "edit" and "Editor" or "Creator"))
+  if from_template then
+    table.insert(content, "*From template (Priority: " .. priority .. ")*")
   end
+  table.insert(content, "")
+  table.insert(content, "## Title")
+  table.insert(content, title)
+  table.insert(content, "")
+  table.insert(content, "## Description")
+  if description ~= "" then
+    -- Split description by newlines for multi-line display
+    for line in description:gmatch("[^\n]+") do
+      table.insert(content, line)
+    end
+  else
+    table.insert(content, "")
+  end
+  table.insert(content, "")
+  table.insert(content, "---")
+  table.insert(content, "")
+  table.insert(content, "Instructions:")
+  table.insert(content, "- Edit title and description above")
+  table.insert(content, "- Write (`:w`) to " .. (mode == "create" and "create task" or "save changes"))
+  table.insert(content, "- Quit (`:q`) without writing to cancel")
+
+  -- Set buffer content
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
+
+  -- Open in a split
+  vim.cmd("split")
+  vim.api.nvim_set_current_buf(bufnr)
+
+  -- Setup keymaps for this buffer
+  local opts = { noremap = true, silent = true, buffer = bufnr }
+
+  -- Setup save handler
+  vim.api.nvim_create_autocmd("BufWriteCmd", {
+    buffer = bufnr,
+    callback = function()
+      local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+      -- Parse title and description from buffer
+      local parsed_title = ""
+      local parsed_description = ""
+      local in_title = false
+      local in_description = false
+
+      for i, line in ipairs(lines) do
+        if line == "## Title" then
+          in_title = true
+          in_description = false
+        elseif line == "## Description" then
+          in_title = false
+          in_description = true
+        elseif line == "---" then
+          break
+        elseif in_title and line ~= "" then
+          parsed_title = line
+          in_title = false
+        elseif in_description and line ~= "---" then
+          if parsed_description == "" then
+            parsed_description = line
+          else
+            parsed_description = parsed_description .. "\n" .. line
+          end
+        end
+      end
+
+      -- Validate input
+      if parsed_title == "" then
+        vim.notify("Title cannot be empty", vim.log.levels.ERROR)
+        return
+      end
+
+      -- Create or update task
+      if mode == "create" then
+        local opts = {
+          description = parsed_description,
+        }
+        if from_template then
+          opts.priority = priority
+        end
+        local result, err = cli.create(parsed_title, opts)
+        if not result then
+          vim.notify("Failed to create task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+          return
+        end
+        local msg = from_template and "Created task from template: " or "Created task: "
+        vim.notify(msg .. parsed_title, vim.log.levels.INFO)
+      else
+        local update_opts = {}
+        if parsed_title ~= title then
+          -- Note: bd doesn't support updating title directly, only via description
+          -- So we'll update description instead
+          vim.notify("Note: Title cannot be changed after creation", vim.log.levels.WARN)
+        end
+        if parsed_description ~= description then
+          update_opts.description = parsed_description
+        end
+
+        if next(update_opts) then
+          local result, err = cli.update(task_id, update_opts)
+          if not result then
+            vim.notify("Failed to update task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+            return
+          end
+          vim.notify("Updated task: " .. task_id, vim.log.levels.INFO)
+        end
+      end
+
+      -- Close the buffer
+      vim.cmd("quit")
+    end
+  })
+
+  -- Position cursor in title field
+  vim.api.nvim_win_set_cursor(0, { 3, 0 })
 end
 
 --- Update a task field
@@ -466,34 +603,18 @@ function M.create_task_from_template(template)
   local title = fields.title_template or "New Task"
   local description = fields.description_template or ""
   local priority = fields.priority or "P2"
-  local status = fields.status or "open"
 
-  -- Prompt for title
-  vim.ui.input({ prompt = "Task title: ", default = title }, function(input_title)
-    if not input_title or input_title == "" then
-      return
-    end
+  -- Store priority in global state for use in the editor callback
+  -- We'll need to modify the editor to handle priority
+  _beads_create_priority = priority
 
-    -- Prompt for description
-    vim.ui.input({ prompt = "Task description: ", default = description }, function(input_description)
-      if not input_description then
-        return
-      end
-
-      -- Create the task with CLI, including description and priority
-      local opts = {
-        description = input_description,
-        priority = priority,
-      }
-      local result, err = cli.create(input_title, opts)
-      if not result then
-        vim.notify("Failed to create task: " .. (err or "unknown error"), vim.log.levels.ERROR)
-        return
-      end
-
-      vim.notify("Created task from template: " .. input_title, vim.log.levels.INFO)
-    end)
-  end)
+  -- Open editor with template defaults
+  M.show_task_editor("create", {
+    title = title,
+    description = description,
+    from_template = true,
+    priority = priority,
+  })
 end
 
 -- Preserve UI state for incremental updates
