@@ -42,6 +42,9 @@ function M.setup(opts)
   -- Initialize UI
   require("beads.ui").init()
 
+  -- Initialize fuzzy finder
+  require("beads.fuzzy").init()
+
   -- Setup auto-sync if enabled
   if config.auto_sync then
     local sync = require("beads.sync")

@@ -347,4 +347,96 @@ function M.sync()
   end
 end
 
+--- Find and select task using fuzzy finder
+function M.find_task()
+  local fuzzy = require("beads.fuzzy")
+
+  if not fuzzy.is_available() then
+    vim.notify("No fuzzy finder available. Install telescope.nvim or fzf-lua", vim.log.levels.WARN)
+    return
+  end
+
+  -- Fetch tasks
+  local tasks, err = cli.ready()
+  if not tasks then
+    vim.notify("Failed to load tasks: " .. (err or "unknown error"), vim.log.levels.ERROR)
+    return
+  end
+
+  -- Handle both array and object responses
+  local task_list = {}
+  if type(tasks) == "table" then
+    if tasks[1] then
+      task_list = tasks
+    else
+      task_list = { tasks }
+    end
+  end
+
+  -- Open fuzzy finder
+  fuzzy.find_task(task_list, function(task)
+    if task then
+      M.show_task_detail(task.id)
+    end
+  end)
+end
+
+--- Find and set task status using fuzzy finder
+function M.find_task_status()
+  local fuzzy = require("beads.fuzzy")
+
+  if not fuzzy.is_available() then
+    vim.notify("No fuzzy finder available. Install telescope.nvim or fzf-lua", vim.log.levels.WARN)
+    return
+  end
+
+  -- Fetch the currently viewed task (from buffer context)
+  vim.ui.input({ prompt = "Enter task ID: " }, function(task_id)
+    if not task_id or task_id == "" then
+      return
+    end
+
+    local task, err = cli.show(task_id)
+    if not task then
+      vim.notify("Failed to load task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+      return
+    end
+
+    fuzzy.find_status(task, function(status)
+      if status then
+        M.update_task(task_id, "status", status)
+      end
+    end)
+  end)
+end
+
+--- Find and set task priority using fuzzy finder
+function M.find_task_priority()
+  local fuzzy = require("beads.fuzzy")
+
+  if not fuzzy.is_available() then
+    vim.notify("No fuzzy finder available. Install telescope.nvim or fzf-lua", vim.log.levels.WARN)
+    return
+  end
+
+  -- Fetch the currently viewed task (from buffer context)
+  vim.ui.input({ prompt = "Enter task ID: " }, function(task_id)
+    if not task_id or task_id == "" then
+      return
+    end
+
+    local task, err = cli.show(task_id)
+    if not task then
+      vim.notify("Failed to load task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+      return
+    end
+
+    fuzzy.find_priority(task, function(priority)
+      if priority then
+        M.update_task(task_id, "priority", priority)
+      end
+    end)
+  end)
+end
+
 return M
