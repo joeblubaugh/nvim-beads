@@ -343,4 +343,46 @@ function M.delete(id, force)
   return result, err
 end
 
+--- Get child issues of a parent task
+--- @param parent_id string Parent task ID
+--- @return table|nil List of child tasks
+--- @return string|nil Error message
+function M.list_children(parent_id)
+  local result, err = run_command("list", { "--parent", parent_id, "--limit", "0" })
+  return result, err
+end
+
+--- Create a child task under a parent
+--- @param parent_id string Parent task ID
+--- @param title string Child task title
+--- @param opts table|nil Optional fields (description, priority, etc.)
+--- @return table|nil Created task
+--- @return string|nil Error message
+function M.create_child(parent_id, title, opts)
+  local args = { title }
+  opts = opts or {}
+
+  table.insert(args, "--parent")
+  table.insert(args, parent_id)
+
+  if opts.description then
+    table.insert(args, "--description")
+    table.insert(args, opts.description)
+  end
+  if opts.priority then
+    table.insert(args, "--priority")
+    table.insert(args, opts.priority)
+  end
+
+  local result, err = run_command("create", args)
+
+  -- Invalidate ready cache when new task is created
+  if result then
+    cache.ready.data = nil
+    cache.ready.time = 0
+  end
+
+  return result, err
+end
+
 return M

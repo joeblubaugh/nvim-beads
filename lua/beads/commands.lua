@@ -313,6 +313,39 @@ function M.setup()
     desc = "Delete a Beads task",
     nargs = 1,
   })
+
+  -- Create epic
+  vim.api.nvim_create_user_command("BeadsCreateEpic", function(opts)
+    create_task_from_template("epic")
+  end, { desc = "Create a new epic" })
+
+  -- Show children of an epic
+  vim.api.nvim_create_user_command("BeadsShowChildren", function(opts)
+    local parent_id = opts.args
+    if parent_id == "" then
+      vim.notify("Parent task ID required", vim.log.levels.ERROR)
+      return
+    end
+    ui.show_task_children(parent_id)
+  end, {
+    desc = "Show child issues of an epic",
+    nargs = 1,
+  })
+
+  -- Create child issue
+  vim.api.nvim_create_user_command("BeadsCreateChild", function(opts)
+    local args = vim.split(opts.args, " ", { trimempty = true })
+    if #args < 1 then
+      vim.notify("Usage: :BeadsCreateChild <parent_id> [title]", vim.log.levels.ERROR)
+      return
+    end
+    local parent_id = args[1]
+    local title = table.concat(args, " ", 2) or ""
+    ui.create_child_task(parent_id, title)
+  end, {
+    desc = "Create a child issue under a parent epic",
+    nargs = "+",
+  })
 end
 
 -- Initialize commands on load

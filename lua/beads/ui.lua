@@ -362,7 +362,12 @@ function M.show_task_detail(id)
   table.insert(lines, "")
   table.insert(lines, "---")
   table.insert(lines, "")
-  table.insert(lines, "Press 'e' to edit this task, 'd' to delete, 'q' to close")
+  table.insert(lines, "Keymaps:")
+  table.insert(lines, "- 'e' - Edit task")
+  table.insert(lines, "- 'd' - Delete task")
+  table.insert(lines, "- 'c' - Create child issue (if epic)")
+  table.insert(lines, "- 'l' - List child issues (if epic)")
+  table.insert(lines, "- 'q' - Close")
 
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
   vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
@@ -389,6 +394,18 @@ function M.show_task_detail(id)
   -- Add 'd' to delete task
   vim.keymap.set("n", "d", function()
     M.delete_task(task.id or id)
+  end, opts)
+
+  -- Add 'c' to create child issue
+  vim.keymap.set("n", "c", function()
+    vim.cmd("quit")
+    M.create_child_task(task.id or id, "")
+  end, opts)
+
+  -- Add 'l' to list child issues
+  vim.keymap.set("n", "l", function()
+    vim.cmd("quit")
+    M.show_task_children(task.id or id)
   end, opts)
 
   -- Also add 'q' to close
@@ -461,6 +478,7 @@ function M.show_task_editor(mode, initial_data)
   local title = initial_data.title or ""
   local description = initial_data.description or ""
   local task_id = initial_data.id
+  local parent_id = initial_data.parent_id
   local priority = initial_data.priority or "P2"
   local from_template = initial_data.from_template or false
 
@@ -473,9 +491,15 @@ function M.show_task_editor(mode, initial_data)
 
   -- Prepare content with instructions
   local content = {}
-  table.insert(content, "# Task " .. (mode == "edit" and "Editor" or "Creator"))
-  if from_template then
-    table.insert(content, "*From template*")
+  if mode == "edit" then
+    table.insert(content, "# Task Editor")
+  elseif mode == "create_child" then
+    table.insert(content, "# Create Child Issue of " .. parent_id)
+  else
+    table.insert(content, "# Task Creator")
+    if from_template then
+      table.insert(content, "*From template*")
+    end
   end
   table.insert(content, "")
   table.insert(content, "## Title")
@@ -499,7 +523,11 @@ function M.show_task_editor(mode, initial_data)
   table.insert(content, "Instructions:")
   table.insert(content, "- Edit title, description, and priority above the --- line")
   table.insert(content, "- Priority must be P1 (high), P2 (medium), or P3 (low)")
-  table.insert(content, "- Press <C-s> to " .. (mode == "create" and "create task" or "save changes"))
+  if mode == "create" or mode == "create_child" then
+    table.insert(content, "- Press <C-s> to create task")
+  else
+    table.insert(content, "- Press <C-s> to save changes")
+  end
   table.insert(content, "- Press <C-c> or :q to cancel")
 
   -- Set buffer content
@@ -533,6 +561,17 @@ function M.show_task_editor(mode, initial_data)
       end
       local msg = from_template and "Created task from template: " or "Created task: "
       vim.notify(msg .. parsed_title, vim.log.levels.INFO)
+    elseif mode == "create_child" then
+      local opts = {
+        description = parsed_description,
+        priority = parsed_priority,
+      }
+      local result, err = cli.create_child(parent_id, parsed_title, opts)
+      if not result then
+        vim.notify("Failed to create child task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+        return
+      end
+      vim.notify("Created child task: " .. parsed_title, vim.log.levels.INFO)
     else
       local update_opts = {}
       if parsed_title ~= title then
@@ -776,6 +815,87 @@ function M.delete_task(id)
       end
     end
   end)
+end
+
+--- Show child issues of a parent task
+--- @param parent_id string Parent task ID
+function M.show_task_children(parent_id)
+  local children, err = cli.list_children(parent_id)
+  if not children then
+    vim.notify("Failed to load child issues: " .. (err or "unknown error"), vim.log.levels.ERROR)
+    return
+  end
+
+  -- Handle both array and object responses
+  local child_list = {}
+  if type(children) == "table" then
+    if children[1] then
+      child_list = children
+    elseif next(children) then
+      child_list = { children }
+    else
+      child_list = {}
+    end
+  end
+
+  -- Create new buffer for child issues
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
+  vim.api.nvim_buf_set_option(bufnr, "bufhidden", "wipe")
+
+  -- Format child issues display
+  local lines = {
+    "# Child Issues of " .. parent_id,
+    "",
+  }
+
+  if #child_list == 0 then
+    table.insert(lines, "No child issues found")
+  else
+    for _, child in ipairs(child_list) do
+      local status_symbol = (child.status == "closed" or child.status == "complete") and "✓" or "○"
+      local priority = child.priority or "P2"
+      table.insert(lines, string.format("%s [%s] [%s] %s: %s", status_symbol, priority, child.id, child.status or "open", child.title or child.name))
+    end
+  end
+
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+  vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
+
+  -- Open in new split
+  vim.cmd("split")
+  vim.api.nvim_set_current_buf(bufnr)
+  vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
+
+  -- Add keymaps
+  local opts = { noremap = true, silent = true, buffer = bufnr }
+  vim.keymap.set("n", "q", function()
+    vim.cmd("quit")
+  end, opts)
+
+  vim.keymap.set("n", "<CR>", function()
+    local line = vim.api.nvim_get_current_line()
+    local id = line:match("%[([^%]]+)%]%s*[^%[]*$")
+    if not id then
+      id = line:match("%[(nvim%-beads%-[^%]]+)%]")
+    end
+    if id then
+      vim.cmd("quit")
+      M.show_task_detail(id)
+    end
+  end, opts)
+end
+
+--- Create a child task under a parent
+--- @param parent_id string Parent task ID
+--- @param title string|nil Initial task title (optional)
+function M.create_child_task(parent_id, title)
+  M.show_task_editor("create_child", {
+    parent_id = parent_id,
+    title = title or "",
+    description = "",
+    priority = "P2",
+  })
 end
 
 return M

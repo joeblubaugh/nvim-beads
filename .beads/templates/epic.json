@@ -1,0 +1,19 @@
+{
+  "name": "epic",
+  "description": "Template for epics with sub-issues",
+  "fields": {
+    "priority": "P2",
+    "status": "open",
+    "issue_type": "epic",
+    "title_template": "[EPIC] {{title}}",
+    "description_template": "## Overview\n\n## Goals\n\n## Success Criteria\n1. \n2. \n3. \n\n## Key Milestones\n- \n- \n- \n\n## Technical Details\n",
+    "checklist": [
+      "Create sub-issues",
+      "Define acceptance criteria",
+      "Implement milestone 1",
+      "Implement milestone 2",
+      "Testing and QA",
+      "Documentation"
+    ]
+  }
+}
