@@ -46,6 +46,9 @@ function M.setup()
 
   -- Fuzzy update priority
   vim.keymap.set("n", "<leader>bP", ":BeadsFindPriority<CR>", vim.tbl_extend("force", opts, { desc = "Beads: Find Priority" }))
+
+  -- Statusline toggle
+  vim.keymap.set("n", "<leader>bsl", ":BeadsStatusline<CR>", vim.tbl_extend("force", opts, { desc = "Beads: Show Statusline Component" }))
 end
 
 return M

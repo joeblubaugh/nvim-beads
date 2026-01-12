@@ -142,6 +142,28 @@ function M.setup()
     desc = "Set preferred fuzzy finder backend (telescope, fzf_lua, or builtin)",
     nargs = 1,
   })
+
+  -- Setup statusline integration
+  vim.api.nvim_create_user_command("BeadsStatusline", function(opts)
+    local statusline = require("beads.statusline")
+    local component = statusline.register_statusline_component()
+    vim.notify("Beads statusline component: " .. component, vim.log.levels.INFO)
+    vim.notify("Add to your statusline setting: " .. component, vim.log.levels.INFO)
+  end, { desc = "Show beads statusline component for use in statusline setting" })
+
+  -- Enable statusline for current window
+  vim.api.nvim_create_user_command("BeadsStatuslineEnable", function(opts)
+    local statusline = require("beads.statusline")
+    statusline.setup({ enabled = true })
+    vim.notify("Beads statusline enabled", vim.log.levels.INFO)
+  end, { desc = "Enable beads statusline integration" })
+
+  -- Disable statusline for current window
+  vim.api.nvim_create_user_command("BeadsStatuslineDisable", function(opts)
+    local statusline = require("beads.statusline")
+    statusline.setup({ enabled = false })
+    vim.notify("Beads statusline disabled", vim.log.levels.INFO)
+  end, { desc = "Disable beads statusline integration" })
 end
 
 -- Initialize commands on load
