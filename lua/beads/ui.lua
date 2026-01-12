@@ -333,11 +333,11 @@ end
 --- Create a new task
 --- @param title string Task title
 function M.create_task(title)
-  local ok, result = cli.create(title)
-  if ok then
+  local result, err = cli.create(title)
+  if result then
     vim.notify("Created task: " .. title, vim.log.levels.INFO)
   else
-    vim.notify("Failed to create task: " .. (result or "unknown error"), vim.log.levels.ERROR)
+    vim.notify("Failed to create task: " .. (err or "unknown error"), vim.log.levels.ERROR)
   end
 end
 
@@ -348,22 +348,22 @@ end
 function M.update_task(id, field, value)
   local opts = {}
   opts[field] = value
-  local ok, result = cli.update(id, opts)
-  if ok then
+  local result, err = cli.update(id, opts)
+  if result then
     vim.notify("Updated task " .. id, vim.log.levels.INFO)
   else
-    vim.notify("Failed to update task: " .. (result or "unknown error"), vim.log.levels.ERROR)
+    vim.notify("Failed to update task: " .. (err or "unknown error"), vim.log.levels.ERROR)
   end
 end
 
 --- Close a task
 --- @param id string Task ID
 function M.close_task(id)
-  local ok, result = cli.close(id)
-  if ok then
+  local result, err = cli.close(id)
+  if result then
     vim.notify("Closed task " .. id, vim.log.levels.INFO)
   else
-    vim.notify("Failed to close task: " .. (result or "unknown error"), vim.log.levels.ERROR)
+    vim.notify("Failed to close task: " .. (err or "unknown error"), vim.log.levels.ERROR)
   end
 end
 

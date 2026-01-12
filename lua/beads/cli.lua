@@ -209,7 +209,7 @@ function M.create(title, opts)
     table.insert(args, opts.priority)
   end
 
-  local result = run_command("create", args)
+  local result, err = run_command("create", args)
 
   -- Invalidate ready cache when new task is created
   if result then
@@ -217,7 +217,7 @@ function M.create(title, opts)
     cache.ready.time = 0
   end
 
-  return result
+  return result, err
 end
 
 --- Update a task
@@ -242,7 +242,7 @@ function M.update(id, opts)
     table.insert(args, opts.description)
   end
 
-  local result = run_command("update", args)
+  local result, err = run_command("update", args)
 
   -- Invalidate caches when task is updated
   if result then
@@ -251,7 +251,7 @@ function M.update(id, opts)
     cache.show[id] = nil
   end
 
-  return result
+  return result, err
 end
 
 --- Close/complete a task
@@ -259,7 +259,7 @@ end
 --- @return table|nil Closed task
 --- @return string|nil Error message
 function M.close(id)
-  local result = run_command(string.format("close %s", id))
+  local result, err = run_command("close", { id })
 
   -- Invalidate caches when task is closed
   if result then
@@ -268,7 +268,7 @@ function M.close(id)
     cache.show[id] = nil
   end
 
-  return result
+  return result, err
 end
 
 --- Sync with remote
