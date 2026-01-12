@@ -17,6 +17,64 @@
 
 local M = {}
 
+-- Cache configuration
+local cache = {
+  ready = { data = nil, time = 0 },
+  show = {},  -- Per-task cache
+  ttl = 30000,  -- 30 seconds default TTL (milliseconds)
+  enabled = true,
+  hits = 0,
+  misses = 0,
+}
+
+--- Enable or disable caching
+--- @param enable boolean Whether to enable cache
+function M.set_cache_enabled(enable)
+  cache.enabled = enable
+  if not enable then
+    M.clear_cache()
+  end
+end
+
+--- Set cache TTL
+--- @param ttl number Time to live in milliseconds
+function M.set_cache_ttl(ttl)
+  cache.ttl = ttl
+end
+
+--- Clear all cached data
+function M.clear_cache()
+  cache.ready.data = nil
+  cache.ready.time = 0
+  cache.show = {}
+  cache.hits = 0
+  cache.misses = 0
+end
+
+--- Get cache statistics
+--- @return table Cache statistics
+function M.get_cache_stats()
+  local total = cache.hits + cache.misses
+  local hit_rate = total > 0 and (cache.hits / total) * 100 or 0
+  return {
+    hits = cache.hits,
+    misses = cache.misses,
+    total = total,
+    hit_rate = string.format("%.1f%%", hit_rate),
+  }
+end
+
+--- Check if cache entry is still valid
+--- @param entry_time number Last update time in milliseconds
+--- @return boolean True if cache is still valid
+local function is_cache_valid(entry_time)
+  if not cache.enabled then
+    return false
+  end
+  local now = vim.loop.now()
+  return (now - entry_time) < cache.ttl
+end
+
 --- Check if beads is available
 --- @return boolean True if 'bd' command is available
 local function is_beads_available()
@@ -70,7 +128,23 @@ end
 --- @return table|nil List of tasks
 --- @return string|nil Error message
 function M.ready()
-  return run_command("ready")
+  -- Check cache first
+  if cache.enabled and is_cache_valid(cache.ready.time) then
+    cache.hits = cache.hits + 1
+    return cache.ready.data
+  end
+
+  -- Cache miss, fetch from CLI
+  cache.misses = cache.misses + 1
+  local result = run_command("ready")
+
+  -- Store in cache
+  if cache.enabled and result then
+    cache.ready.data = result
+    cache.ready.time = vim.loop.now()
+  end
+
+  return result
 end
 
 --- Show details of a specific task
@@ -78,7 +152,26 @@ end
 --- @return table|nil Task details
 --- @return string|nil Error message
 function M.show(id)
-  return run_command(string.format("show %s", id))
+  -- Check cache first
+  if cache.enabled and cache.show[id] and is_cache_valid(cache.show[id].time) then
+    cache.hits = cache.hits + 1
+    return cache.show[id].data
+  end
+
+  -- Cache miss, fetch from CLI
+  cache.misses = cache.misses + 1
+  local result = run_command(string.format("show %s", id))
+
+  -- Store in cache
+  if cache.enabled and result then
+    if not cache.show[id] then
+      cache.show[id] = {}
+    end
+    cache.show[id].data = result
+    cache.show[id].time = vim.loop.now()
+  end
+
+  return result
 end
 
 --- Create a new task
@@ -99,7 +192,15 @@ function M.create(title, opts)
     table.insert(args, opts.priority)
   end
 
-  return run_command("create", args)
+  local result = run_command("create", args)
+
+  -- Invalidate ready cache when new task is created
+  if result then
+    cache.ready.data = nil
+    cache.ready.time = 0
+  end
+
+  return result
 end
 
 --- Update a task
@@ -124,7 +225,16 @@ function M.update(id, opts)
     table.insert(args, opts.description)
   end
 
-  return run_command("update", args)
+  local result = run_command("update", args)
+
+  -- Invalidate caches when task is updated
+  if result then
+    cache.ready.data = nil
+    cache.ready.time = 0
+    cache.show[id] = nil
+  end
+
+  return result
 end
 
 --- Close/complete a task
@@ -132,7 +242,16 @@ end
 --- @return table|nil Closed task
 --- @return string|nil Error message
 function M.close(id)
-  return run_command(string.format("close %s", id))
+  local result = run_command(string.format("close %s", id))
+
+  -- Invalidate caches when task is closed
+  if result then
+    cache.ready.data = nil
+    cache.ready.time = 0
+    cache.show[id] = nil
+  end
+
+  return result
 end
 
 --- Sync with remote
