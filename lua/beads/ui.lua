@@ -344,6 +344,7 @@ function M.show_task_detail(id)
       id = task.id or id,
       title = task.title or task.name or "",
       description = task.description or "",
+      priority = task.priority or "P2",
     })
   end, opts)
 
@@ -362,20 +363,28 @@ function M.create_task(title)
   })
 end
 
---- Parse title and description from editor buffer lines
+--- Parse title, description, and priority from editor buffer lines
 local function parse_editor_content(lines)
   local parsed_title = ""
   local parsed_description = ""
+  local parsed_priority = "P2"
   local in_title = false
   local in_description = false
+  local in_priority = false
 
   for i, line in ipairs(lines) do
     if line == "## Title" then
       in_title = true
       in_description = false
+      in_priority = false
     elseif line == "## Description" then
       in_title = false
       in_description = true
+      in_priority = false
+    elseif line == "## Priority" then
+      in_title = false
+      in_description = false
+      in_priority = true
     elseif line == "---" then
       break
     elseif in_title and line ~= "" then
@@ -387,10 +396,18 @@ local function parse_editor_content(lines)
       else
         parsed_description = parsed_description .. "\n" .. line
       end
+    elseif in_priority and line ~= "" then
+      local priority = line:match("^(P[1-3])$")
+      if priority then
+        parsed_priority = priority
+      else
+        vim.notify("Invalid priority: " .. line .. " (use P1, P2, or P3)", vim.log.levels.WARN)
+      end
+      in_priority = false
     end
   end
 
-  return parsed_title, parsed_description
+  return parsed_title, parsed_description, parsed_priority
 end
 
 --- Show interactive editor for task creation or editing
@@ -415,7 +432,7 @@ function M.show_task_editor(mode, initial_data)
   local content = {}
   table.insert(content, "# Task " .. (mode == "edit" and "Editor" or "Creator"))
   if from_template then
-    table.insert(content, "*From template (Priority: " .. priority .. ")*")
+    table.insert(content, "*From template*")
   end
   table.insert(content, "")
   table.insert(content, "## Title")
@@ -431,10 +448,14 @@ function M.show_task_editor(mode, initial_data)
     table.insert(content, "")
   end
   table.insert(content, "")
+  table.insert(content, "## Priority")
+  table.insert(content, priority)
+  table.insert(content, "")
   table.insert(content, "---")
   table.insert(content, "")
   table.insert(content, "Instructions:")
-  table.insert(content, "- Edit title and description above the --- line")
+  table.insert(content, "- Edit title, description, and priority above the --- line")
+  table.insert(content, "- Priority must be P1 (high), P2 (medium), or P3 (low)")
   table.insert(content, "- Press <C-s> to " .. (mode == "create" and "create task" or "save changes"))
   table.insert(content, "- Press <C-c> or :q to cancel")
 
@@ -448,7 +469,7 @@ function M.show_task_editor(mode, initial_data)
   -- Helper function to handle save/create
   local function handle_save()
     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local parsed_title, parsed_description = parse_editor_content(lines)
+    local parsed_title, parsed_description, parsed_priority = parse_editor_content(lines)
 
     -- Validate input
     if parsed_title == "" then
@@ -460,10 +481,8 @@ function M.show_task_editor(mode, initial_data)
     if mode == "create" then
       local opts = {
         description = parsed_description,
+        priority = parsed_priority,
       }
-      if from_template then
-        opts.priority = priority
-      end
       local result, err = cli.create(parsed_title, opts)
       if not result then
         vim.notify("Failed to create task: " .. (err or "unknown error"), vim.log.levels.ERROR)
@@ -478,6 +497,9 @@ function M.show_task_editor(mode, initial_data)
       end
       if parsed_description ~= description then
         update_opts.description = parsed_description
+      end
+      if parsed_priority ~= priority then
+        update_opts.priority = parsed_priority
       end
 
       if next(update_opts) then
