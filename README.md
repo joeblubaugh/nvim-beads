@@ -248,7 +248,7 @@ require('beads').setup({
 
 ## Configuration
 
-### Basic Setup
+### Quick Setup
 
 ```lua
 require('beads').setup({
@@ -260,59 +260,17 @@ require('beads').setup({
 })
 ```
 
-### Available Options
+### Full Configuration Reference
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `keymaps` | boolean | `true` | Enable default keymaps |
-| `auto_sync` | boolean | `false` | Enable periodic background sync |
-| `sync_interval` | number | `10000` | Sync interval (milliseconds) |
-| `theme` | string | `'dark'` | Color theme ('dark', 'light') |
-| `auto_theme` | boolean | `false` | Auto-detect theme from background |
+For comprehensive configuration options including:
+- Cache configuration
+- Statusline customization
+- Theme and color customization
+- Performance tuning
+- Environment variables
+- Troubleshooting
 
-### Cache Configuration
-
-For performance optimization:
-
-```lua
-local cli = require('beads.cli')
-
--- Disable caching (always fetch fresh data)
-cli.set_cache_enabled(false)
-
--- Set cache time-to-live (milliseconds)
-cli.set_cache_ttl(60000)  -- 1 minute
-
--- View cache statistics
-local stats = cli.get_cache_stats()
-print(stats.hit_rate)  -- "87.5%"
-```
-
-### Custom Colors and Themes
-
-Define custom color schemes:
-
-```lua
-local theme = require('beads.theme')
-
--- Set individual colors
-theme.set_color('P1', '#ff6b6b')
-theme.set_color('open', '#87ceeb')
-theme.apply_theme()
-
--- Register custom theme
-theme.register_theme('custom', {
-  bg = '#1e1e1e',
-  fg = '#e0e0e0',
-  open = '#87ceeb',
-  in_progress = '#ffa500',
-  closed = '#90ee90',
-  P1 = '#ff6b6b',
-  P2 = '#ffd93d',
-  P3 = '#6bcf7f',
-})
-theme.set_theme('custom')
-```
+See [CONFIG.md](CONFIG.md) for the complete guide.
 
 ## Workflow Examples
 
