@@ -251,6 +251,11 @@ function M.show_task_list()
       id = line:match("%[(nvim%-beads%-[^%]]+)%]")
     end
     if id then
+      -- Close the task list window first
+      if task_list_winid and vim.api.nvim_win_is_valid(task_list_winid) then
+        vim.api.nvim_win_close(task_list_winid, true)
+        task_list_winid = nil
+      end
       M.show_task_detail(id)
     end
   end, opts)
@@ -287,9 +292,30 @@ end
 --- Show detailed view of a specific task
 --- @param id string Task ID
 function M.show_task_detail(id)
-  local task, err = cli.show(id)
-  if not task then
+  local response, err = cli.show(id)
+  if not response then
     vim.notify("Failed to load task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+    return
+  end
+
+  -- Handle both array and object responses from bd show
+  local task
+  if type(response) == "table" then
+    if response[1] then
+      -- Array response - take first element
+      task = response[1]
+    elseif next(response) then
+      -- Single object response
+      task = response
+    else
+      -- Empty response
+      vim.notify("Task not found", vim.log.levels.ERROR)
+      return
+    end
+  end
+
+  if not task then
+    vim.notify("Failed to parse task data", vim.log.levels.ERROR)
     return
   end
 
