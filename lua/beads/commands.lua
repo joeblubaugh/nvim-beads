@@ -29,13 +29,15 @@ function M.setup()
   vim.api.nvim_create_user_command("BeadsCreate", function(opts)
     local title = opts.args
     if title == "" then
-      vim.notify("Task title required", vim.log.levels.ERROR)
-      return
+      -- No arguments: open interactive editor
+      ui.create_task()
+    else
+      -- Arguments provided: use as title
+      ui.create_task(title)
     end
-    ui.create_task(title)
   end, {
-    desc = "Create a new Beads task",
-    nargs = "+",
+    desc = "Create a new Beads task (with optional title)",
+    nargs = "*",
   })
 
   -- Show task details
