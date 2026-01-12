@@ -189,12 +189,16 @@ function M.show_task_list()
   -- Handle both array and object responses
   local task_list = {}
   if type(tasks) == "table" then
+    -- Check if it's an array (has numeric keys) or a single object
     if tasks[1] then
-      -- Array of tasks
+      -- Array of tasks (even if empty, this is correct)
       task_list = tasks
-    else
-      -- Single task or error
+    elseif next(tasks) then
+      -- Non-empty object (single task)
       task_list = { tasks }
+    else
+      -- Empty array or empty object - treat as no tasks
+      task_list = {}
     end
   end
 
