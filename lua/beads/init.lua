@@ -64,7 +64,7 @@ function M.setup(opts)
 
     -- Clean up on exit
     vim.api.nvim_create_autocmd("VimLeavePre", {
-      group = "beads",
+      group = "nvim_beads",
       callback = function()
         sync.stop_auto_sync()
       end,
