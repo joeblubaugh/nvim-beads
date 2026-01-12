@@ -248,6 +248,83 @@ sl.setup({
 - Custom format function support
 - Automatic symbol display (○ ◐ ✓)
 
+### Theme Support
+
+Customize the appearance of beads UI with built-in themes and color customization:
+
+**Built-in Themes:**
+- `dark` (default) - Optimized for dark editor backgrounds
+- `light` - Optimized for light editor backgrounds
+
+**Color Customization:**
+
+Each theme defines colors for:
+- Task status: `open`, `in_progress`, `closed`
+- Priority levels: `P1`, `P2`, `P3`
+- UI elements: `bg`, `fg`, `border`, `accent`, `title`
+
+**Commands:**
+
+```vim
+" Show available themes
+:BeadsTheme
+
+" Switch to a specific theme
+:BeadsTheme dark
+:BeadsTheme light
+
+" Set custom color for a key
+:BeadsColor P1 #ff0000
+:BeadsColor open #0066cc
+
+" Auto-detect theme from background
+:BeadsThemeAuto
+```
+
+**Lua Configuration:**
+
+```lua
+-- Set theme during setup
+require('beads').setup({
+  theme = "light",      -- 'dark' or 'light'
+  auto_theme = true,    -- Auto-detect from vim.o.background
+})
+
+-- Customize colors after setup
+local theme = require('beads.theme')
+theme.set_color('P1', '#ff6b6b')  -- Custom high priority color
+theme.apply_theme()
+
+-- Register custom theme
+theme.register_theme('custom', {
+  bg = '#1e1e1e',
+  fg = '#e0e0e0',
+  open = '#87ceeb',
+  in_progress = '#ffa500',
+  closed = '#90ee90',
+  P1 = '#ff6b6b',
+  P2 = '#ffd93d',
+  P3 = '#6bcf7f',
+  border = '#404040',
+  title = '#64b5f6',
+  accent = '#bb86fc',
+})
+theme.set_theme('custom')
+```
+
+**Highlight Groups:**
+
+- `BeadsNormal` - Normal text
+- `BeadsBorder` - Window border
+- `BeadsTitle` - Title text
+- `BeadsAccent` - Accent elements
+- `BeadsTaskOpen` - Open task indicator
+- `BeadsTaskInProgress` - In-progress task indicator
+- `BeadsTaskClosed` - Closed task indicator
+- `BeadsPriorityP1`, `P2`, `P3` - Priority indicators
+- `BeadsTaskListItem` - Task list items
+- `BeadsTaskListSelected` - Selected item highlight
+
 ### Keymaps
 
 With default configuration enabled:
@@ -262,6 +339,8 @@ With default configuration enabled:
 - `<leader>bS` - Find and update task status
 - `<leader>bP` - Find and update task priority
 - `<leader>bsl` - Show statusline component
+- `<leader>bth` - Switch theme
+- `<leader>bta` - Auto-detect theme
 
 In task list:
 - `q` - Close window
@@ -286,6 +365,7 @@ In task list:
 - **`lua/beads/fuzzy_builtin.lua`** - Built-in vim.ui.select implementation
 - **`lua/beads/statusline.lua`** - Statusline/tabline integration
 - **`lua/beads/sync.lua`** - Real-time synchronization with Beads
+- **`lua/beads/theme.lua`** - Theme and highlight customization
 
 ### Plugin Entry Point
 
