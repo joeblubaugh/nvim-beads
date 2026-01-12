@@ -49,6 +49,10 @@ function M.setup()
 
   -- Statusline toggle
   vim.keymap.set("n", "<leader>bsl", ":BeadsStatusline<CR>", vim.tbl_extend("force", opts, { desc = "Beads: Show Statusline Component" }))
+
+  -- Theme commands
+  vim.keymap.set("n", "<leader>bth", ":BeadsTheme ", vim.tbl_extend("force", opts, { desc = "Beads: Set Theme" }))
+  vim.keymap.set("n", "<leader>bta", ":BeadsThemeAuto<CR>", vim.tbl_extend("force", opts, { desc = "Beads: Auto-detect Theme" }))
 end
 
 return M

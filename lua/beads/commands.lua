@@ -164,6 +164,47 @@ function M.setup()
     statusline.setup({ enabled = false })
     vim.notify("Beads statusline disabled", vim.log.levels.INFO)
   end, { desc = "Disable beads statusline integration" })
+
+  -- Set theme
+  vim.api.nvim_create_user_command("BeadsTheme", function(opts)
+    local theme_name = opts.args
+    if theme_name == "" then
+      local theme = require("beads.theme")
+      vim.notify("Available themes: " .. table.concat(theme.get_available_themes(), ", "), vim.log.levels.INFO)
+      return
+    end
+    local theme = require("beads.theme")
+    theme.set_theme(theme_name)
+    vim.notify("Theme set to: " .. theme_name, vim.log.levels.INFO)
+  end, {
+    desc = "Set beads theme (dark, light, or custom)",
+    nargs = "?",
+  })
+
+  -- Set custom color
+  vim.api.nvim_create_user_command("BeadsColor", function(opts)
+    local args = vim.split(opts.args, " ")
+    if #args < 2 then
+      vim.notify("Usage: :BeadsColor <key> <hex_color>", vim.log.levels.ERROR)
+      return
+    end
+    local key = args[1]
+    local color = args[2]
+    local theme = require("beads.theme")
+    theme.set_color(key, color)
+    theme.apply_theme()
+    vim.notify("Color set: " .. key .. " = " .. color, vim.log.levels.INFO)
+  end, {
+    desc = "Set custom color for beads theme",
+    nargs = "+",
+  })
+
+  -- Toggle auto theme
+  vim.api.nvim_create_user_command("BeadsThemeAuto", function(opts)
+    local theme = require("beads.theme")
+    theme.auto_detect()
+    vim.notify("Theme auto-detected from background: " .. theme.get_current_theme(), vim.log.levels.INFO)
+  end, { desc = "Auto-detect theme from background setting" })
 end
 
 -- Initialize commands on load
