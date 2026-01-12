@@ -274,4 +274,99 @@ function M.resolve_template(template_name, vars)
   return template
 end
 
+--- Create a task from a template with interactive input
+--- @param template_name string Template name
+--- @param callback function Callback with (success, task_data) signature
+function M.create_task_from_template(template_name, callback)
+  local template = M.resolve_template(template_name)
+  if not template then
+    vim.notify("Template not found: " .. template_name, vim.log.levels.ERROR)
+    if callback then callback(false, nil) end
+    return
+  end
+
+  local fields = template.fields
+
+  -- Prompt for title
+  vim.ui.input(
+    { prompt = "Task title: ", default = fields.title_template or "" },
+    function(title)
+      if not title or title == "" then
+        if callback then callback(false, nil) end
+        return
+      end
+
+      -- Create task with CLI
+      local cli = require("beads.cli")
+      local opts = {
+        description = fields.description_template or "",
+        priority = fields.priority or "P2",
+      }
+
+      local task, err = cli.create(title, opts)
+
+      if task then
+        -- Note: In a full implementation, we would also add checklist items
+        -- For now, we just return success
+        vim.notify("Task created from template: " .. title, vim.log.levels.INFO)
+        if callback then callback(true, task) end
+      else
+        vim.notify("Failed to create task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+        if callback then callback(false, nil) end
+      end
+    end
+  )
+end
+
+--- Get recommended templates for common workflow types
+--- @return table Recommended workflows with templates
+function M.get_recommended_workflows()
+  return {
+    {
+      name = "Bug Fix",
+      description = "Quick bug report and fix",
+      templates = { "bug" },
+      workflow = {
+        "1. Report the bug using bug template",
+        "2. Identify root cause",
+        "3. Implement and test fix",
+        "4. Update documentation",
+      }
+    },
+    {
+      name = "Feature Development",
+      description = "Complete feature implementation",
+      templates = { "feature" },
+      workflow = {
+        "1. Create feature request",
+        "2. Design solution",
+        "3. Implement feature",
+        "4. Write tests",
+        "5. Update documentation",
+      }
+    },
+    {
+      name = "Documentation",
+      description = "Documentation updates",
+      templates = { "documentation" },
+      workflow = {
+        "1. Identify documentation gaps",
+        "2. Write content",
+        "3. Review and edit",
+        "4. Publish",
+      }
+    },
+    {
+      name = "Maintenance",
+      description = "Regular maintenance tasks",
+      templates = { "chore" },
+      workflow = {
+        "1. Define maintenance scope",
+        "2. Execute",
+        "3. Verify changes",
+      }
+    },
+  }
+end
+
 return M

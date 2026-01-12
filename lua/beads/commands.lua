@@ -217,6 +217,22 @@ function M.setup()
     vim.notify("Available templates:\n- " .. table.concat(template_list, "\n- "), vim.log.levels.INFO)
   end, { desc = "List available task templates" })
 
+  -- Show recommended workflows
+  vim.api.nvim_create_user_command("BeadsWorkflows", function(opts)
+    local templates = require("beads.templates")
+    local workflows = templates.get_recommended_workflows()
+
+    local lines = { "Available Workflows:", "" }
+    for _, wf in ipairs(workflows) do
+      table.insert(lines, "• " .. wf.name)
+      table.insert(lines, "  " .. wf.description)
+      table.insert(lines, "  Templates: " .. table.concat(wf.templates, ", "))
+      table.insert(lines, "")
+    end
+
+    vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
+  end, { desc = "Show recommended workflow templates" })
+
   -- Create task from template
   vim.api.nvim_create_user_command("BeadsCreateFromTemplate", function(opts)
     local templates = require("beads.templates")
