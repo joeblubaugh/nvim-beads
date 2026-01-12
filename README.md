@@ -200,6 +200,54 @@ The plugin provides integrated fuzzy finder support with multiple backends:
 - Switch backends at runtime with `:BeadsSetFinder`
 - Each finder displays formatted task information
 
+### Statusline Integration
+
+Display beads task information directly in your statusline for quick overview:
+
+**Available Components:**
+- `count` - Simple task count `[5]`
+- `short` - Abbreviated format `Beads:1/5`
+- `indicator` - Status breakdown `[○2 ◐1 ✓2]`
+- `priority` - Priority breakdown `[P1:2 P2:3]`
+
+**Commands:**
+
+```vim
+" Show the statusline component format
+:BeadsStatusline
+
+" Enable statusline display
+:BeadsStatuslineEnable
+
+" Disable statusline display
+:BeadsStatuslineDisable
+```
+
+**Usage Examples:**
+
+Add to your neovim config (init.vim or init.lua):
+
+```lua
+-- Using default format
+require('beads').setup()
+local statusline_component = require('beads.statusline').register_statusline_component()
+-- Then add to your statusline: set statusline=%{luaeval('beads_statusline()')}
+
+-- Or build custom format
+local sl = require('beads.statusline')
+sl.setup({
+  enabled = true,
+  format = sl.build_format({ "short", "indicator", "priority" })
+})
+```
+
+**Features:**
+- Smart caching to minimize performance impact
+- Graceful fallback when tasks unavailable
+- Configurable update intervals
+- Custom format function support
+- Automatic symbol display (○ ◐ ✓)
+
 ### Keymaps
 
 With default configuration enabled:
@@ -213,6 +261,7 @@ With default configuration enabled:
 - `<leader>bt` - Find task with fuzzy finder
 - `<leader>bS` - Find and update task status
 - `<leader>bP` - Find and update task priority
+- `<leader>bsl` - Show statusline component
 
 In task list:
 - `q` - Close window
@@ -235,6 +284,8 @@ In task list:
 - **`lua/beads/fuzzy_telescope.lua`** - Telescope.nvim picker implementation
 - **`lua/beads/fuzzy_fzf.lua`** - fzf-lua implementation
 - **`lua/beads/fuzzy_builtin.lua`** - Built-in vim.ui.select implementation
+- **`lua/beads/statusline.lua`** - Statusline/tabline integration
+- **`lua/beads/sync.lua`** - Real-time synchronization with Beads
 
 ### Plugin Entry Point
 
