@@ -468,24 +468,31 @@ function M.create_task_from_template(template)
   local priority = fields.priority or "P2"
   local status = fields.status or "open"
 
-  -- Prompt for title if using template
+  -- Prompt for title
   vim.ui.input({ prompt = "Task title: ", default = title }, function(input_title)
     if not input_title or input_title == "" then
       return
     end
 
-    -- Create the task with CLI
-    local ok, result = cli.create(input_title)
-    if not ok then
-      vim.notify("Failed to create task: " .. (result or "unknown error"), vim.log.levels.ERROR)
-      return
-    end
+    -- Prompt for description
+    vim.ui.input({ prompt = "Task description: ", default = description }, function(input_description)
+      if not input_description then
+        return
+      end
 
-    -- Get the created task ID from result if available
-    vim.notify("Created task from template: " .. input_title, vim.log.levels.INFO)
+      -- Create the task with CLI, including description and priority
+      local opts = {
+        description = input_description,
+        priority = priority,
+      }
+      local result, err = cli.create(input_title, opts)
+      if not result then
+        vim.notify("Failed to create task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+        return
+      end
 
-    -- Note: In a full implementation, we would also set the description and priority
-    -- This would require additional CLI commands or direct database access
+      vim.notify("Created task from template: " .. input_title, vim.log.levels.INFO)
+    end)
   end)
 end
 
