@@ -62,6 +62,9 @@ function M.setup(opts)
     sync.watch_beads_dir()
     sync.start_auto_sync(config.sync_interval)
 
+    -- Create autocmd group
+    vim.api.nvim_create_augroup("nvim_beads", { clear = true })
+
     -- Clean up on exit
     vim.api.nvim_create_autocmd("VimLeavePre", {
       group = "nvim_beads",
