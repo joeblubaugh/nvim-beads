@@ -2,297 +2,302 @@
 
 A Neovim plugin for task tracking that integrates with [Beads](https://github.com/steveyegge/beads) - an AI-native, git-based issue tracking system.
 
-## Overview
+## What is nvim-beads?
 
-**nvim-beads** demonstrates how to build a Neovim plugin that leverages Beads for project management. Instead of relying on external web-based issue trackers, Beads keeps all task tracking directly in your git repository alongside your code.
+**nvim-beads** brings task tracking directly into your editor. Keep all your project tasks stored in git alongside your code—no external services, no account required. Manage tasks, prioritize work, and track progress without leaving Neovim.
 
-### Why Beads?
+### Why Use Beads?
 
 - **Git-native**: Issues stored in `.beads/` directory, synced with git
-- **AI-friendly**: CLI-first design optimized for AI coding agents
 - **Offline-first**: Works without external services or accounts
-- **Collaborative**: Automatic conflict resolution for shared workflows
+- **AI-friendly**: CLI-first design optimized for AI coding agents
 - **Lightweight**: SQLite backend with JSONL export
+- **Collaborative**: Automatic conflict resolution for shared workflows
 
-## Project Status
-
-This is a freshly initialized project with:
-- ✅ Beads infrastructure configured
-- ✅ Agent workflow documentation
-- ⏳ Neovim plugin code (coming soon)
-
-## Current Structure
-
-```
-nvim-beads/
-├── .beads/              # Beads issue tracking system
-│   ├── beads.db        # SQLite database
-│   ├── config.yaml     # Beads configuration
-│   └── issues.jsonl    # Issue storage (git-tracked)
-├── AGENTS.md           # AI agent workflow instructions
-└── README.md           # This file
-```
-
-## Getting Started
+## Installation
 
 ### Prerequisites
 
-- Neovim (development version)
-- Beads CLI (`bd`)
+- Neovim (v0.7+)
+- Beads CLI (`bd`) - [Install Beads](https://github.com/steveyegge/beads)
 
-### Installation
+### Setup with your plugin manager
+
+Using [packer.nvim](https://github.com/wbthomason/packer.nvim):
+
+```lua
+use {
+  'joeblubaugh/nvim-beads',
+  config = function()
+    require('beads').setup()
+  end
+}
+```
+
+Or [lazy.nvim](https://github.com/folke/lazy.nvim):
+
+```lua
+{
+  'joeblubaugh/nvim-beads',
+  config = function()
+    require('beads').setup()
+  end
+}
+```
+
+## Quick Start
+
+### Initialize Beads in your project
 
 ```bash
-# Clone the repository
-git clone https://github.com/joeblubaugh/nvim-beads.git
-cd nvim-beads
-
-# Initialize Beads (one-time setup)
+cd your-project
 bd onboard
 ```
 
-### Basic Commands
-
-```bash
-# Find available work
-bd ready
-
-# View issue details
-bd show <id>
-
-# Claim work (mark in progress)
-bd update <id> --status in_progress
-
-# Complete work
-bd close <id>
-
-# Sync with git
-bd sync
-```
-
-## Workflow
-
-### Starting Work
-
-1. Find available tasks: `bd ready`
-2. Claim a task: `bd update <id> --status in_progress`
-3. Work on the task in Neovim
-4. Track progress using issue comments
-
-### Finishing Work
-
-1. Ensure all code is committed: `git status`
-2. Run quality checks (tests, linters, etc.)
-3. Close completed issues: `bd close <id>`
-4. Sync and push: `bd sync && git push`
-
-## Integration with Agents
-
-This project is designed to work seamlessly with AI coding agents. See [AGENTS.md](AGENTS.md) for detailed workflow instructions, including the mandatory session completion checklist.
-
-## Beads Configuration
-
-The Beads system is configured in `.beads/config.yaml`. Key features:
-
-- **Issue tracking**: Create, update, and close issues locally
-- **Git sync**: Automatic synchronization with git branches
-- **JSONL storage**: Issues tracked in human-readable JSON format
-- **Merge drivers**: Intelligent conflict resolution for shared workflows
-
-## Usage Examples
-
-### In Neovim
-
-```lua
--- Initialize with defaults
-require('beads').setup()
-
--- Or with custom configuration
-require('beads').setup({
-  keymaps = true,
-  auto_sync = true,
-  sync_interval = 5000
-})
-```
-
-### Commands
+### Basic Neovim Commands
 
 ```vim
-" Show task list
+" Show all open tasks
 :Beads
 
 " Create a new task
-:BeadsCreate Implement new feature
+:BeadsCreate New feature: add dark mode
 
 " View task details
 :BeadsShow nvim-beads-abc
 
-" Update task status
+" Create a task from a template
+:BeadsCreateBug        " Quick bug report
+:BeadsCreateFeature    " New feature request
+:BeadsCreateDoc        " Documentation task
+:BeadsCreateChore      " Maintenance task
+
+" Update a task
 :BeadsUpdate nvim-beads-abc status in_progress
+:BeadsUpdate nvim-beads-abc priority P1
 
 " Close a completed task
 :BeadsClose nvim-beads-abc
 
-" Sync with remote
+" Sync with git
 :BeadsSync
-
-" Filter tasks (examples)
-:BeadsFilter priority:P1
-:BeadsFilter status:open,in_progress
-:BeadsFilter priority:P1,status:open,assignee:alice
-
-" Clear all filters
-:BeadsClearFilters
 ```
 
-### Filtering
+### Using Keymaps
 
-Advanced filtering is supported with multiple filter types:
+Default keymaps (when enabled in setup):
 
-**Filter Syntax:**
+| Keymap | Action |
+|--------|--------|
+| `<leader>bd` | Show task list |
+| `<leader>bc` | Create new task |
+| `<leader>bs` | Sync tasks |
+| `<leader>br` | Refresh task list |
+| `<leader>bt` | Find task with fuzzy finder |
+| `<leader>bS` | Find and update task status |
+| `<leader>bP` | Find and update task priority |
+| `<leader>bf` | Filter tasks |
+| `<leader>bF` | Clear filters |
+
+In the task list window:
+- `q` - Close window
+- `<CR>` - View task details
+- `r` - Refresh list
+- `f` - Filter tasks
+- `c` - Clear filters
+
+## Core Features
+
+### Task Management
+
+Create, update, and track tasks with full details:
+
 ```vim
-:BeadsFilter priority:P1,P2,P3
-:BeadsFilter status:open,in_progress,closed
-:BeadsFilter assignee:alice,bob
-:BeadsFilter priority:P1,status:open,assignee:alice
+" Create tasks with description and priority
+:BeadsCreate Fix login bug
+:BeadsCreate --priority P1 Critical security issue
+
+" Update any task field
+:BeadsUpdate nvim-beads-123 status closed
+:BeadsUpdate nvim-beads-123 priority P2
+:BeadsUpdate nvim-beads-123 description Updated task details
+```
+
+### Task Templates
+
+Create tasks quickly with templates for common patterns:
+
+```vim
+" Create from built-in templates
+:BeadsCreateBug       " Bug report template
+:BeadsCreateFeature   " Feature request template
+:BeadsCreateDoc       " Documentation template
+:BeadsCreateChore     " Maintenance template
+
+" Create from any template
+:BeadsCreateFromTemplate bug
+:BeadsCreateFromTemplate feature
+
+" See available templates
+:BeadsListTemplates
+
+" View recommended workflows
+:BeadsWorkflows
+```
+
+**Built-in templates include:**
+- **bug** - Bug reports with priority and reproduction steps
+- **feature** - Feature requests with requirements and acceptance criteria
+- **documentation** - Documentation updates with sections
+- **chore** - Maintenance tasks with scope and verification steps
+
+### Filtering Tasks
+
+Filter the task list by status, priority, or assignee:
+
+```vim
+" Filter by single criterion
+:BeadsFilter priority:P1
+:BeadsFilter status:open
+:BeadsFilter assignee:alice
+
+" Combine multiple filters (AND logic)
+:BeadsFilter priority:P1,status:open
+:BeadsFilter status:open,assignee:alice
+
+" Clear filters
+:BeadsClearFilters
+
+" Filter in the task list window with 'f' key
 ```
 
 **Supported Filters:**
-- `priority` - Filter by task priority (P1, P2, P3)
-- `status` - Filter by status (open, in_progress, closed)
-- `assignee` - Filter by assignee name (fuzzy matching)
-
-**Features:**
-- Multiple filter values combined with OR within the same type
-- Different filter types combined with AND logic
-- Display shows filtered count (e.g., "5/12 tasks")
-- Clear visual indication of active filters
+- `priority` - P1, P2, P3
+- `status` - open, in_progress, closed
+- `assignee` - User name
 
 ### Fuzzy Finder Integration
 
-The plugin provides integrated fuzzy finder support with multiple backends:
-
-**Supported Backends:**
-- **telescope.nvim** - Full-featured, highly configurable picker
-- **fzf-lua** - Fast, command-line like fuzzy finder
-- **builtin** - Native Neovim vim.ui.select (always available)
-
-**Commands:**
+Quickly find and work with tasks using your preferred fuzzy finder:
 
 ```vim
-" Find and select a task with fuzzy finder
+" Find a task by name, ID, or content
 :BeadsFindTask
 
-" Find and update task status interactively
+" Find and change task status
 :BeadsFindStatus
 
-" Find and update task priority interactively
+" Find and change task priority
 :BeadsFindPriority
 
-" Switch between fuzzy finder backends
-:BeadsSetFinder telescope|fzf_lua|builtin
+" Switch between finders (telescope, fzf_lua, builtin)
+:BeadsSetFinder telescope
 ```
 
-**Features:**
-- Automatic backend detection and fallback
-- Graceful degradation to builtin picker if external finders unavailable
-- Smart backend selection (telescope > fzf-lua > builtin)
-- Switch backends at runtime with `:BeadsSetFinder`
-- Each finder displays formatted task information
+Supports:
+- **telescope.nvim** - Full-featured picker (if installed)
+- **fzf-lua** - Command-line style finder (if installed)
+- **builtin** - Native Neovim selection (always available)
 
 ### Statusline Integration
 
-Display beads task information directly in your statusline for quick overview:
-
-**Available Components:**
-- `count` - Simple task count `[5]`
-- `short` - Abbreviated format `Beads:1/5`
-- `indicator` - Status breakdown `[○2 ◐1 ✓2]`
-- `priority` - Priority breakdown `[P1:2 P2:3]`
-
-**Commands:**
+Display task information in your statusline:
 
 ```vim
-" Show the statusline component format
+" Show statusline format
 :BeadsStatusline
 
-" Enable statusline display
+" Enable/disable statusline
 :BeadsStatuslineEnable
-
-" Disable statusline display
 :BeadsStatuslineDisable
 ```
 
-**Usage Examples:**
-
-Add to your neovim config (init.vim or init.lua):
+Add to your Neovim config:
 
 ```lua
--- Using default format
 require('beads').setup()
-local statusline_component = require('beads.statusline').register_statusline_component()
--- Then add to your statusline: set statusline=%{luaeval('beads_statusline()')}
-
--- Or build custom format
 local sl = require('beads.statusline')
-sl.setup({
-  enabled = true,
-  format = sl.build_format({ "short", "indicator", "priority" })
-})
+sl.setup({ enabled = true })
 ```
 
-**Features:**
-- Smart caching to minimize performance impact
-- Graceful fallback when tasks unavailable
-- Configurable update intervals
-- Custom format function support
-- Automatic symbol display (○ ◐ ✓)
+### Themes and Colors
 
-### Theme Support
-
-Customize the appearance of beads UI with built-in themes and color customization:
-
-**Built-in Themes:**
-- `dark` (default) - Optimized for dark editor backgrounds
-- `light` - Optimized for light editor backgrounds
-
-**Color Customization:**
-
-Each theme defines colors for:
-- Task status: `open`, `in_progress`, `closed`
-- Priority levels: `P1`, `P2`, `P3`
-- UI elements: `bg`, `fg`, `border`, `accent`, `title`
-
-**Commands:**
+Customize the appearance of the task list and UI:
 
 ```vim
-" Show available themes
-:BeadsTheme
-
-" Switch to a specific theme
+" Switch themes
 :BeadsTheme dark
 :BeadsTheme light
 
-" Set custom color for a key
+" Set custom colors
 :BeadsColor P1 #ff0000
 :BeadsColor open #0066cc
 
-" Auto-detect theme from background
+" Auto-detect from editor background
 :BeadsThemeAuto
 ```
 
-**Lua Configuration:**
+Configure in setup:
 
 ```lua
--- Set theme during setup
 require('beads').setup({
-  theme = "light",      -- 'dark' or 'light'
+  theme = 'dark',       -- 'dark' or 'light'
   auto_theme = true,    -- Auto-detect from vim.o.background
 })
+```
 
--- Customize colors after setup
+## Configuration
+
+### Basic Setup
+
+```lua
+require('beads').setup({
+  keymaps = true,       -- Enable default keymaps
+  auto_sync = false,    -- Periodic sync (disabled by default)
+  sync_interval = 10000,-- Sync interval in milliseconds
+  theme = 'dark',       -- 'dark' or 'light'
+  auto_theme = false,   -- Auto-detect theme
+})
+```
+
+### Available Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `keymaps` | boolean | `true` | Enable default keymaps |
+| `auto_sync` | boolean | `false` | Enable periodic background sync |
+| `sync_interval` | number | `10000` | Sync interval (milliseconds) |
+| `theme` | string | `'dark'` | Color theme ('dark', 'light') |
+| `auto_theme` | boolean | `false` | Auto-detect theme from background |
+
+### Cache Configuration
+
+For performance optimization:
+
+```lua
+local cli = require('beads.cli')
+
+-- Disable caching (always fetch fresh data)
+cli.set_cache_enabled(false)
+
+-- Set cache time-to-live (milliseconds)
+cli.set_cache_ttl(60000)  -- 1 minute
+
+-- View cache statistics
+local stats = cli.get_cache_stats()
+print(stats.hit_rate)  -- "87.5%"
+```
+
+### Custom Colors and Themes
+
+Define custom color schemes:
+
+```lua
 local theme = require('beads.theme')
-theme.set_color('P1', '#ff6b6b')  -- Custom high priority color
+
+-- Set individual colors
+theme.set_color('P1', '#ff6b6b')
+theme.set_color('open', '#87ceeb')
 theme.apply_theme()
 
 -- Register custom theme
@@ -305,171 +310,255 @@ theme.register_theme('custom', {
   P1 = '#ff6b6b',
   P2 = '#ffd93d',
   P3 = '#6bcf7f',
-  border = '#404040',
-  title = '#64b5f6',
-  accent = '#bb86fc',
 })
 theme.set_theme('custom')
 ```
 
-**Highlight Groups:**
+## Workflow Examples
 
-- `BeadsNormal` - Normal text
-- `BeadsBorder` - Window border
-- `BeadsTitle` - Title text
-- `BeadsAccent` - Accent elements
-- `BeadsTaskOpen` - Open task indicator
-- `BeadsTaskInProgress` - In-progress task indicator
-- `BeadsTaskClosed` - Closed task indicator
-- `BeadsPriorityP1`, `P2`, `P3` - Priority indicators
-- `BeadsTaskListItem` - Task list items
-- `BeadsTaskListSelected` - Selected item highlight
+### Daily Workflow
 
-### Async Operations
+1. **Morning standup**
+   ```vim
+   :Beads
+   " Review open and in_progress tasks
+   ```
 
-Non-blocking operation support for improved user experience:
+2. **Start new work**
+   ```vim
+   :BeadsFindTask
+   " Select task to work on
+   :BeadsUpdate nvim-beads-abc status in_progress
+   ```
 
-**Key Features:**
-- Async wrappers for all CLI operations (ready, show, create, update, close, sync)
-- Operation queuing with configurable concurrency limits
-- Progress tracking for long-running operations
-- Automatic retry on failure
-- User notifications on completion/error
-- Operation history and statistics
+3. **During work**
+   - Switch back to task list with `<leader>bd`
+   - Filter by priority: `:BeadsFilter priority:P1`
+   - Quick fuzzy search: `<leader>bt`
 
-**Lua Configuration:**
+4. **Finishing up**
+   ```vim
+   :BeadsClose nvim-beads-abc
+   :BeadsSync
+   ```
 
-```lua
-local async = require('beads.async')
+### Creating Issues
 
--- Run operation asynchronously
-local op_id = async.run("test", function()
-  -- Your async code here
-  return result
-end, {}, function(success, result)
-  -- Callback when complete
-  if success then
-    print("Success:", result)
-  else
-    print("Failed:", result)
-  end
-end)
-
--- Configure async behavior
-async.set_max_concurrent(3)           -- Limit concurrent operations
-async.set_default_timeout(30000)      -- 30 second timeout
-async.set_notify_on_complete(true)    -- Notify on success
-async.set_notify_on_error(true)       -- Notify on errors
-async.set_retry_enabled(true)         -- Enable auto-retry
-async.set_retry_max_attempts(3)       -- Max 3 retry attempts
-
--- Queue operations instead of running immediately
-async.queue("task", my_function, args, callback)
-
--- Get operation status
-local status = async.get_status(op_id)
-print(status.status)  -- "running", "completed", "failed"
-
--- Wait for operation (blocking)
-local success, result = async.wait(op_id, 30000)
-
--- Retry a failed operation
-async.retry(failed_op_id)
-
--- Progress tracking
-local progress = require('beads.progress')
-local tracker = progress.new("op1", 100, "Processing tasks")
-
-progress.update("op1", 25, "25% complete")
-progress.increment("op1", 25, "50% complete")
-
-local display = progress.get_display("op1")
-print(display)  -- Shows progress bar
-
-progress.complete("op1", "All done!")
+**Quick task creation:**
+```vim
+:BeadsCreate Fix typo in docs
 ```
 
-**Async Wrappers:**
-- `async.ready(callback)` - Get ready tasks
-- `async.show(id, callback)` - Show task details
-- `async.create(title, callback)` - Create new task
-- `async.update(id, opts, callback)` - Update task
-- `async.close(id, callback)` - Close task
-- `async.sync(callback)` - Sync with Beads
+**Using templates (recommended):**
+```vim
+:BeadsCreateBug         " Bug report with full details
+:BeadsCreateFeature     " Feature request with requirements
+```
 
-### Keymaps
+**Creating from template interactively:**
+```vim
+:BeadsCreateFromTemplate
+" Prompts to select template and enter details
+```
 
-With default configuration enabled:
+### Filtering Workflow
 
-- `<leader>bd` - Show task list
-- `<leader>bc` - Create new task
-- `<leader>bs` - Sync tasks
-- `<leader>br` - Refresh task list
-- `<leader>bf` - Open filter prompt
-- `<leader>bF` - Clear all filters
-- `<leader>bt` - Find task with fuzzy finder
-- `<leader>bS` - Find and update task status
-- `<leader>bP` - Find and update task priority
-- `<leader>bsl` - Show statusline component
-- `<leader>bth` - Switch theme
-- `<leader>bta` - Auto-detect theme
+```vim
+" Show only high-priority open tasks
+:BeadsFilter priority:P1,status:open
 
-In task list:
-- `q` - Close window
-- `<CR>` - View task details
-- `r` - Refresh list
-- `f` - Open filter input dialog
-- `c` - Clear all filters
+" Show tasks assigned to you
+:BeadsFilter assignee:your-name
+
+" Clear and start over
+:BeadsClearFilters
+```
+
+## Troubleshooting
+
+### "Beads CLI not found"
+
+Make sure the `bd` command is installed and in your PATH:
+
+```bash
+which bd
+bd --version
+```
+
+If not found, [install Beads](https://github.com/steveyegge/beads).
+
+### Tasks not showing
+
+1. Make sure you're in a Beads project: `ls .beads/`
+2. Initialize Beads if needed: `bd onboard`
+3. Refresh the plugin: `:BeadsRefresh`
+4. Check for errors: `:messages`
+
+### Performance issues
+
+If the plugin feels slow:
+
+1. Disable auto-sync: Set `auto_sync = false` in setup
+2. Increase cache TTL: `cli.set_cache_ttl(120000)` for 2 minutes
+3. Reduce statusline updates: Disable statusline or increase sync interval
+
+## Performance
+
+The plugin uses caching to minimize CLI calls:
+
+- **Default cache TTL**: 30 seconds
+- **Automatic invalidation**: On create, update, or close
+- **Async operations**: All CLI operations are non-blocking
+- **Minimal overhead**: Efficiently handles hundreds of tasks
+
+## Getting Help
+
+- **Plugin Documentation**: `:help beads`
+- **Beads Documentation**: [github.com/steveyegge/beads](https://github.com/steveyegge/beads)
+- **Neovim Docs**: `:help plugin`
+
+---
+
+# For Developers
 
 ## Plugin Architecture
 
-### Modules
+The plugin is organized into focused modules:
 
-- **`lua/beads/init.lua`** - Main plugin module, configuration and setup
-- **`lua/beads/cli.lua`** - Beads CLI command wrapper
-- **`lua/beads/ui.lua`** - UI components (floating windows, buffers)
-- **`lua/beads/filters.lua`** - Task filtering logic
-- **`lua/beads/commands.lua`** - Neovim user commands
-- **`lua/beads/keymaps.lua`** - Default keymaps
-- **`lua/beads/fuzzy.lua`** - Fuzzy finder abstraction layer
-- **`lua/beads/fuzzy_telescope.lua`** - Telescope.nvim picker implementation
-- **`lua/beads/fuzzy_fzf.lua`** - fzf-lua implementation
-- **`lua/beads/fuzzy_builtin.lua`** - Built-in vim.ui.select implementation
-- **`lua/beads/statusline.lua`** - Statusline/tabline integration
-- **`lua/beads/sync.lua`** - Real-time synchronization with Beads
-- **`lua/beads/theme.lua`** - Theme and highlight customization
-- **`lua/beads/async.lua`** - Asynchronous operation wrapper and queuing
-- **`lua/beads/progress.lua`** - Progress tracking for operations
+| Module | Purpose |
+|--------|---------|
+| `init.lua` | Plugin initialization and configuration |
+| `cli.lua` | Beads CLI command wrapper and caching |
+| `ui.lua` | UI components and task display |
+| `commands.lua` | Neovim command definitions |
+| `keymaps.lua` | Default keymap setup |
+| `filters.lua` | Task filtering logic |
+| `fuzzy.lua` | Fuzzy finder abstraction layer |
+| `fuzzy_*.lua` | Finder implementations (telescope, fzf, builtin) |
+| `statusline.lua` | Statusline/tabline integration |
+| `theme.lua` | Theme and highlight customization |
+| `sync.lua` | Real-time sync with Beads daemon |
+| `templates.lua` | Template system for tasks |
 
-### Plugin Entry Point
+### Entry Point
 
-- **`plugin/beads.lua`** - Loaded automatically by Neovim on startup
+- **`plugin/beads.lua`** - Loaded automatically on Neovim startup
 
-## Development
+## Project Structure
 
-To develop the Neovim plugin itself:
+```
+nvim-beads/
+├── plugin/
+│   └── beads.lua           # Plugin entry point
+├── lua/beads/
+│   ├── init.lua            # Main module
+│   ├── cli.lua             # CLI wrapper
+│   ├── ui.lua              # UI components
+│   ├── commands.lua        # Neovim commands
+│   ├── keymaps.lua         # Default keymaps
+│   ├── filters.lua         # Filtering logic
+│   ├── fuzzy.lua           # Fuzzy finder abstraction
+│   ├── fuzzy_telescope.lua # Telescope implementation
+│   ├── fuzzy_fzf.lua       # fzf implementation
+│   ├── fuzzy_builtin.lua   # Built-in implementation
+│   ├── statusline.lua      # Statusline integration
+│   ├── theme.lua           # Theme system
+│   ├── sync.lua            # Sync module
+│   └── templates.lua       # Template system
+├── .beads/
+│   ├── config.yaml         # Beads configuration
+│   ├── beads.db            # Task database
+│   └── issues.jsonl        # Task storage
+├── doc/
+│   └── beads.txt           # Help documentation
+└── README.md               # This file
+```
 
-1. Explore the Beads integration patterns in this repository
-2. Build Lua modules for Neovim in `lua/` directory
-3. Test with Neovim's plugin development workflow
-4. Track features and bugs using `bd` commands
+## Development Guide
 
-### Running Tests
+### Prerequisites
 
-Tests are located in `tests/` and use a testing framework compatible with Lua.
+- Neovim 0.7+
+- Lua 5.1+
+- Beads CLI (`bd`)
+
+### Getting Started with Development
+
+1. Clone and navigate to the repository
+2. Install Beads if not already installed
+3. Initialize the beads project: `bd onboard`
+4. Use the plugin by pointing Neovim to this directory
+
+### Testing
+
+Tests are located in `tests/` directory using Lua testing frameworks.
 
 ```bash
-# Run all tests
+# Run tests with Neovim
 nvim --noplugin -u tests/minimal_init.lua -c "PlenaryBustedDirectory tests/ { minimal_init = 'tests/minimal_init.lua' }"
 ```
+
+### Key Implementation Notes
+
+**CLI Integration:**
+- All `bd` commands wrapped in `lua/beads/cli.lua`
+- Responses automatically parsed as JSON
+- Built-in caching with configurable TTL
+- Automatic cache invalidation on mutations
+
+**Async Operations:**
+- All blocking calls use `vim.schedule()` for non-blocking execution
+- CLI operations return (result, error) tuples
+- Progress tracking for long-running operations
+
+**UI Components:**
+- Floating window with proper styling
+- Highlight groups for theming
+- Filter state preservation
+- Keyboard navigation and selection
+
+### Adding New Features
+
+To add a new command or feature:
+
+1. **Add CLI wrapper** (if needed) in `lua/beads/cli.lua`
+2. **Add UI function** in `lua/beads/ui.lua`
+3. **Add Neovim command** in `lua/beads/commands.lua`
+4. **Add keymaps** in `lua/beads/keymaps.lua` (optional)
+5. **Add tests** in `tests/` directory
+6. **Track with beads**: `bd create "Feature: ..." `
+
+## Beads Configuration
+
+The Beads system is configured in `.beads/config.yaml`:
+
+- **Issue tracking**: Create, update, and close issues locally
+- **Git sync**: Automatic synchronization with git branches
+- **JSONL storage**: Issues tracked in human-readable JSON format
+- **Merge drivers**: Intelligent conflict resolution for shared workflows
+
+See [Beads Documentation](https://github.com/steveyegge/beads) for full details.
 
 ## Resources
 
 - [Beads Documentation](https://github.com/steveyegge/beads)
 - [Neovim Plugin Development Guide](https://neovim.io/doc/user/plugin/)
-- [Plugin Documentation](doc/beads.txt) - Full help documentation
-- [AGENTS.md](AGENTS.md) - Detailed workflow for AI agents
+- [Vim Script Language](https://neovim.io/doc/user/userfunc.html)
+- [Lua in Neovim](https://neovim.io/doc/user/lua.html)
+
+## Contributing
+
+This plugin is open to contributions. Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Track your work with `bd create`
+4. Submit a pull request with closed issues
 
 ## License
 
 TBD
+
+## Changelog
+
+For a detailed list of changes, see the Beads issues and commits in this repository.
