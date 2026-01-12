@@ -325,6 +325,78 @@ theme.set_theme('custom')
 - `BeadsTaskListItem` - Task list items
 - `BeadsTaskListSelected` - Selected item highlight
 
+### Async Operations
+
+Non-blocking operation support for improved user experience:
+
+**Key Features:**
+- Async wrappers for all CLI operations (ready, show, create, update, close, sync)
+- Operation queuing with configurable concurrency limits
+- Progress tracking for long-running operations
+- Automatic retry on failure
+- User notifications on completion/error
+- Operation history and statistics
+
+**Lua Configuration:**
+
+```lua
+local async = require('beads.async')
+
+-- Run operation asynchronously
+local op_id = async.run("test", function()
+  -- Your async code here
+  return result
+end, {}, function(success, result)
+  -- Callback when complete
+  if success then
+    print("Success:", result)
+  else
+    print("Failed:", result)
+  end
+end)
+
+-- Configure async behavior
+async.set_max_concurrent(3)           -- Limit concurrent operations
+async.set_default_timeout(30000)      -- 30 second timeout
+async.set_notify_on_complete(true)    -- Notify on success
+async.set_notify_on_error(true)       -- Notify on errors
+async.set_retry_enabled(true)         -- Enable auto-retry
+async.set_retry_max_attempts(3)       -- Max 3 retry attempts
+
+-- Queue operations instead of running immediately
+async.queue("task", my_function, args, callback)
+
+-- Get operation status
+local status = async.get_status(op_id)
+print(status.status)  -- "running", "completed", "failed"
+
+-- Wait for operation (blocking)
+local success, result = async.wait(op_id, 30000)
+
+-- Retry a failed operation
+async.retry(failed_op_id)
+
+-- Progress tracking
+local progress = require('beads.progress')
+local tracker = progress.new("op1", 100, "Processing tasks")
+
+progress.update("op1", 25, "25% complete")
+progress.increment("op1", 25, "50% complete")
+
+local display = progress.get_display("op1")
+print(display)  -- Shows progress bar
+
+progress.complete("op1", "All done!")
+```
+
+**Async Wrappers:**
+- `async.ready(callback)` - Get ready tasks
+- `async.show(id, callback)` - Show task details
+- `async.create(title, callback)` - Create new task
+- `async.update(id, opts, callback)` - Update task
+- `async.close(id, callback)` - Close task
+- `async.sync(callback)` - Sync with Beads
+
 ### Keymaps
 
 With default configuration enabled:
@@ -366,6 +438,8 @@ In task list:
 - **`lua/beads/statusline.lua`** - Statusline/tabline integration
 - **`lua/beads/sync.lua`** - Real-time synchronization with Beads
 - **`lua/beads/theme.lua`** - Theme and highlight customization
+- **`lua/beads/async.lua`** - Asynchronous operation wrapper and queuing
+- **`lua/beads/progress.lua`** - Progress tracking for operations
 
 ### Plugin Entry Point
 
