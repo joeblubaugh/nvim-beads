@@ -31,6 +31,12 @@ function M.setup()
 
   -- Refresh task list
   vim.keymap.set("n", "<leader>br", ":BeadsRefresh<CR>", vim.tbl_extend("force", opts, { desc = "Beads: Refresh" }))
+
+  -- Filter tasks
+  vim.keymap.set("n", "<leader>bf", ":BeadsFilter ", vim.tbl_extend("force", opts, { desc = "Beads: Filter" }))
+
+  -- Clear filters
+  vim.keymap.set("n", "<leader>bF", ":BeadsClearFilters<CR>", vim.tbl_extend("force", opts, { desc = "Beads: Clear Filters" }))
 end
 
 return M

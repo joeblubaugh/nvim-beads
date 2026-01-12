@@ -89,6 +89,29 @@ function M.setup()
   vim.api.nvim_create_user_command("BeadsRefresh", function(opts)
     ui.refresh_task_list()
   end, { desc = "Refresh Beads task list" })
+
+  -- Filter tasks
+  vim.api.nvim_create_user_command("BeadsFilter", function(opts)
+    local filter_str = opts.args
+    if filter_str == "" then
+      vim.notify("Usage: :BeadsFilter priority:P1,status:open,assignee:name", vim.log.levels.ERROR)
+      return
+    end
+    ui.apply_filter_string(filter_str)
+    ui.refresh_task_list()
+  end, {
+    desc = "Filter tasks by priority, status, or assignee",
+    nargs = "+",
+  })
+
+  -- Clear filters
+  vim.api.nvim_create_user_command("BeadsClearFilters", function(opts)
+    ui.clear_filters()
+    ui.refresh_task_list()
+    vim.notify("Filters cleared", vim.log.levels.INFO)
+  end, {
+    desc = "Clear all active filters",
+  })
 end
 
 -- Initialize commands on load
