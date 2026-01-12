@@ -321,6 +321,11 @@ function M.show_task_detail(id)
     end
   end
 
+  table.insert(lines, "")
+  table.insert(lines, "---")
+  table.insert(lines, "")
+  table.insert(lines, "Press 'e' to edit this task")
+
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
   vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
 
@@ -328,6 +333,24 @@ function M.show_task_detail(id)
   vim.cmd("split")
   vim.api.nvim_set_current_buf(bufnr)
   vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
+
+  -- Add keymap to edit task
+  local opts = { noremap = true, silent = true, buffer = bufnr }
+  vim.keymap.set("n", "e", function()
+    -- Close the detail view
+    vim.cmd("quit")
+    -- Open editor
+    M.show_task_editor("edit", {
+      id = task.id or id,
+      title = task.title or task.name or "",
+      description = task.description or "",
+    })
+  end, opts)
+
+  -- Also add 'q' to close
+  vim.keymap.set("n", "q", function()
+    vim.cmd("quit")
+  end, opts)
 end
 
 --- Create a new task with interactive buffer editor
