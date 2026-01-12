@@ -259,7 +259,47 @@ end
 --- @return string|nil Error message
 function M.sync()
   local output = run_command("sync")
+
+  -- Invalidate all caches on sync
+  if output then
+    M.clear_cache()
+  end
+
   return output ~= nil, output
+end
+
+--- Get incremental updates since last sync
+--- @param since_time number|nil Unix timestamp for incremental updates
+--- @return table|nil Changed tasks or nil on error
+--- @return string|nil Error message
+function M.get_incremental_updates(since_time)
+  local args = {}
+  if since_time then
+    table.insert(args, "--since")
+    table.insert(args, tostring(since_time))
+  end
+
+  return run_command("show", args)
+end
+
+--- Update a task incrementally (only changed fields)
+--- @param id string Task ID
+--- @param changed_fields table Only fields that have changed
+--- @return table|nil Updated task
+--- @return string|nil Error message
+function M.update_incremental(id, changed_fields)
+  -- Similar to update but only sends changed fields
+  local result = M.update(id, changed_fields)
+
+  -- Update specific show cache instead of full invalidation
+  if result and cache.enabled then
+    cache.show[id] = {
+      data = result,
+      time = vim.loop.now()
+    }
+  end
+
+  return result
 end
 
 return M

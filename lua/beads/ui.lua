@@ -485,4 +485,46 @@ function M.create_task_from_template(template)
   end)
 end
 
+-- Preserve UI state for incremental updates
+local ui_state = {
+  scroll_position = 0,
+  selected_task = nil,
+  filter_state = {},
+}
+
+--- Save current UI state for restoration after incremental updates
+function M.save_ui_state()
+  return vim.deepcopy(ui_state)
+end
+
+--- Restore UI state after updates
+--- @param saved_state table Previously saved UI state
+function M.restore_ui_state(saved_state)
+  if not saved_state then return end
+  ui_state = vim.tbl_extend("force", ui_state, saved_state)
+end
+
+--- Perform incremental update while preserving UI state
+--- @param changed_tasks table Tasks that have changed
+function M.update_incremental(changed_tasks)
+  if not changed_tasks or #changed_tasks == 0 then
+    return
+  end
+
+  -- Save UI state
+  local saved_state = M.save_ui_state()
+
+  -- Update individual tasks in the list
+  for _, task in ipairs(changed_tasks) do
+    if task.id then
+      -- Update specific task in cache
+      cli.update_incremental(task.id, task)
+    end
+  end
+
+  -- Restore UI state and refresh
+  M.restore_ui_state(saved_state)
+  vim.notify("Updated " .. #changed_tasks .. " tasks incrementally", vim.log.levels.INFO)
+end
+
 return M
