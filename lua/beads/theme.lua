@@ -34,9 +34,21 @@ local themes = {
     P2 = "#ffd93d",          -- Yellow for medium priority
     P3 = "#6bcf7f",          -- Green for low priority
 
+    -- Sync status
+    sync_active = "#4dd0e1", -- Cyan for active sync
+    sync_idle = "#90a4ae",   -- Gray for idle
+    sync_error = "#ef5350",  -- Red for error
+
+    -- System status
+    warning = "#ffb74d",     -- Amber for warnings
+    error = "#e57373",       -- Light red for errors
+    success = "#81c784",     -- Light green for success
+
     -- UI elements
     title = "#64b5f6",       -- Light blue for titles
     accent = "#bb86fc",      -- Purple accent
+    comment = "#757575",     -- Gray for comments
+    modified = "#ffab91",    -- Peach for modified items
   },
 
   light = {
@@ -55,9 +67,21 @@ local themes = {
     P2 = "#ffaa00",          -- Dark yellow for medium priority
     P3 = "#00aa00",          -- Dark green for low priority
 
+    -- Sync status
+    sync_active = "#0097a7", -- Dark cyan for active sync
+    sync_idle = "#616161",   -- Dark gray for idle
+    sync_error = "#d32f2f",  -- Dark red for error
+
+    -- System status
+    warning = "#f57c00",     -- Dark orange for warnings
+    error = "#c62828",       -- Dark red for errors
+    success = "#2e7d32",     -- Dark green for success
+
     -- UI elements
     title = "#0033cc",       -- Dark blue for titles
     accent = "#7700cc",      -- Dark purple accent
+    comment = "#9e9e9e",     -- Gray for comments
+    modified = "#d84315",    -- Deep orange for modified items
   },
 }
 
@@ -79,11 +103,25 @@ local highlight_groups = {
   "BeadsPriorityP2",
   "BeadsPriorityP3",
 
+  -- Sync status
+  "BeadsSyncActive",
+  "BeadsSyncIdle",
+  "BeadsSyncError",
+
+  -- System status
+  "BeadsWarning",
+  "BeadsError",
+  "BeadsSuccess",
+
   -- List items
   "BeadsTaskListItem",
   "BeadsTaskListSelected",
   "BeadsTaskListEven",
   "BeadsTaskListOdd",
+
+  -- Additional
+  "BeadsComment",
+  "BeadsModified",
 }
 
 -- Current theme
@@ -181,6 +219,33 @@ function M.apply_theme()
       fg = colors.P3,
     },
 
+    -- Sync status highlights
+    BeadsSyncActive = {
+      fg = colors.sync_active,
+      bold = true,
+    },
+    BeadsSyncIdle = {
+      fg = colors.sync_idle,
+    },
+    BeadsSyncError = {
+      fg = colors.sync_error,
+      bold = true,
+    },
+
+    -- System status highlights
+    BeadsWarning = {
+      fg = colors.warning,
+      bold = true,
+    },
+    BeadsError = {
+      fg = colors.error,
+      bold = true,
+    },
+    BeadsSuccess = {
+      fg = colors.success,
+      bold = true,
+    },
+
     -- List item highlights
     BeadsTaskListItem = {
       fg = colors.fg,
@@ -202,6 +267,14 @@ function M.apply_theme()
         tonumber(string.sub(colors.bg, 4, 5), 16) + 10,
         tonumber(string.sub(colors.bg, 6, 7), 16) + 10
       ),
+    },
+
+    -- Additional highlights
+    BeadsComment = {
+      fg = colors.comment,
+    },
+    BeadsModified = {
+      fg = colors.modified,
     },
   }
 
