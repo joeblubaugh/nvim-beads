@@ -25,6 +25,13 @@ local cache = {
   update_interval = 5000, -- milliseconds
 }
 
+-- Statusline configuration
+local config = {
+  enabled = false,
+  format = nil, -- Custom format function
+  highlight = "StatusLine", -- Highlight group
+}
+
 --- Get task statistics
 --- @return table Task statistics (open, in_progress, closed, total)
 local function get_task_stats()
@@ -196,6 +203,82 @@ end
 --- @param interval integer Milliseconds between cache updates
 function M.set_update_interval(interval)
   cache.update_interval = interval
+end
+
+--- Setup statusline integration
+--- @param opts table Configuration options
+function M.setup(opts)
+  opts = opts or {}
+  config.enabled = opts.enabled ~= false
+  config.highlight = opts.highlight or "StatusLine"
+  config.format = opts.format
+end
+
+--- Get the statusline component (using custom format or default)
+--- @return string Statusline component
+function M.get_statusline()
+  if not config.enabled then
+    return ""
+  end
+
+  if config.format then
+    return config.format()
+  end
+
+  -- Default format: short status with indicators
+  return M.get_status_short() .. " " .. M.get_status_indicator()
+end
+
+--- Build a custom statusline format function
+--- @param components table List of component names to include
+--- @return function Format function that can be used in statusline
+function M.build_format(components)
+  components = components or { "short", "indicator" }
+
+  return function()
+    local parts = {}
+    for _, comp in ipairs(components) do
+      local text = ""
+      if comp == "count" then
+        text = M.get_task_count()
+      elseif comp == "short" then
+        text = M.get_status_short()
+      elseif comp == "indicator" then
+        text = M.get_status_indicator()
+      elseif comp == "priority" then
+        text = M.get_priority_info()
+      end
+
+      if text ~= "" then
+        table.insert(parts, text)
+      end
+    end
+
+    if #parts == 0 then
+      return ""
+    end
+
+    return table.concat(parts, " ")
+  end
+end
+
+--- Register beads statusline component with vim
+--- Creates a custom statusline expression that can be used in &statusline
+function M.register_statusline_component()
+  vim.fn.statusline_components = vim.fn.statusline_components or {}
+
+  -- Create a global function for use in statusline
+  _G.beads_statusline = function()
+    return M.get_statusline()
+  end
+
+  return "%{luaeval('beads_statusline()')}"
+end
+
+--- Get configuration
+--- @return table Current configuration
+function M.get_config()
+  return vim.deepcopy(config)
 end
 
 return M
