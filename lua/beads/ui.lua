@@ -278,6 +278,18 @@ function M.show_task_list()
     M.clear_filters()
     M.refresh_task_list()
   end, opts)
+
+  vim.keymap.set("n", "d", function()
+    local line = vim.api.nvim_get_current_line()
+    -- Extract task ID from line (format: "○ [P2] [id] status: title")
+    local id = line:match("%[([^%]]+)%]%s*[^%[]*$")
+    if not id then
+      id = line:match("%[(nvim%-beads%-[^%]]+)%]")
+    end
+    if id then
+      M.delete_task(id)
+    end
+  end, opts)
 end
 
 --- Refresh the task list
@@ -350,7 +362,7 @@ function M.show_task_detail(id)
   table.insert(lines, "")
   table.insert(lines, "---")
   table.insert(lines, "")
-  table.insert(lines, "Press 'e' to edit this task")
+  table.insert(lines, "Press 'e' to edit this task, 'd' to delete, 'q' to close")
 
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
   vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
@@ -372,6 +384,11 @@ function M.show_task_detail(id)
       description = task.description or "",
       priority = task.priority or "P2",
     })
+  end, opts)
+
+  -- Add 'd' to delete task
+  vim.keymap.set("n", "d", function()
+    M.delete_task(task.id or id)
   end, opts)
 
   -- Also add 'q' to close
@@ -740,6 +757,25 @@ function M.update_incremental(changed_tasks)
   -- Restore UI state and refresh
   M.restore_ui_state(saved_state)
   vim.notify("Updated " .. #changed_tasks .. " tasks incrementally", vim.log.levels.INFO)
+end
+
+--- Delete a task
+--- @param id string Task ID to delete
+function M.delete_task(id)
+  vim.ui.select({ "No", "Yes" }, { prompt = "Delete task " .. id .. "? This action cannot be undone." }, function(choice)
+    if choice == "Yes" then
+      local result, err = cli.delete(id, true)
+      if result then
+        vim.notify("Task deleted: " .. id, vim.log.levels.INFO)
+        -- Close detail view if open
+        vim.cmd("quit")
+        -- Refresh task list
+        M.refresh_task_list()
+      else
+        vim.notify("Failed to delete task: " .. (err or "unknown error"), vim.log.levels.ERROR)
+      end
+    end
+  end)
 end
 
 return M

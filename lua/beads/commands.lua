@@ -300,6 +300,19 @@ function M.setup()
   vim.api.nvim_create_user_command("BeadsCreateChore", function(opts)
     create_task_from_template("chore")
   end, { desc = "Create a new maintenance/chore task" })
+
+  -- Delete task
+  vim.api.nvim_create_user_command("BeadsDelete", function(opts)
+    local id = opts.args
+    if id == "" then
+      vim.notify("Task ID required", vim.log.levels.ERROR)
+      return
+    end
+    ui.delete_task(id)
+  end, {
+    desc = "Delete a Beads task",
+    nargs = 1,
+  })
 end
 
 -- Initialize commands on load

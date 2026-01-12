@@ -320,4 +320,27 @@ function M.update_incremental(id, changed_fields)
   return result
 end
 
+--- Delete a task
+--- @param id string Task ID to delete
+--- @param force boolean|nil Force deletion without confirmation (default false)
+--- @return table|nil Deleted task info
+--- @return string|nil Error message
+function M.delete(id, force)
+  local args = { id }
+  if force then
+    table.insert(args, "--force")
+  end
+
+  local result, err = run_command("delete", args)
+
+  -- Invalidate caches when task is deleted
+  if result then
+    cache.ready.data = nil
+    cache.ready.time = 0
+    cache.show[id] = nil
+  end
+
+  return result, err
+end
+
 return M
