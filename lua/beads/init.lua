@@ -22,6 +22,8 @@ local defaults = {
   keymaps = true,
   auto_sync = true,
   sync_interval = 5000, -- milliseconds
+  theme = "dark",        -- color theme: dark or light
+  auto_theme = false,    -- auto-detect theme from background
 }
 
 -- Global configuration
@@ -44,6 +46,15 @@ function M.setup(opts)
 
   -- Initialize fuzzy finder
   require("beads.fuzzy").init()
+
+  -- Initialize theme
+  local theme = require("beads.theme")
+  if config.auto_theme then
+    theme.auto_detect()
+  else
+    theme.set_theme(config.theme)
+  end
+  theme.apply_theme()
 
   -- Setup auto-sync if enabled
   if config.auto_sync then
