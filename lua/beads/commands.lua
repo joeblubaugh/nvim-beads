@@ -205,6 +205,69 @@ function M.setup()
     theme.auto_detect()
     vim.notify("Theme auto-detected from background: " .. theme.get_current_theme(), vim.log.levels.INFO)
   end, { desc = "Auto-detect theme from background setting" })
+
+  -- List available templates
+  vim.api.nvim_create_user_command("BeadsListTemplates", function(opts)
+    local templates = require("beads.templates")
+    local template_list = templates.list_templates()
+    if #template_list == 0 then
+      vim.notify("No templates found", vim.log.levels.WARN)
+      return
+    end
+    vim.notify("Available templates:\n- " .. table.concat(template_list, "\n- "), vim.log.levels.INFO)
+  end, { desc = "List available task templates" })
+
+  -- Create task from template
+  vim.api.nvim_create_user_command("BeadsCreateFromTemplate", function(opts)
+    local templates = require("beads.templates")
+    local template_list = templates.list_templates()
+
+    if #template_list == 0 then
+      vim.notify("No templates found", vim.log.levels.WARN)
+      return
+    end
+
+    -- If template specified as argument, use it
+    if opts.args ~= "" then
+      local template_name = opts.args
+      local template = templates.resolve_template(template_name)
+      if not template then
+        vim.notify("Template not found: " .. template_name, vim.log.levels.ERROR)
+        return
+      end
+      ui.create_task_from_template(template)
+      return
+    end
+
+    -- Otherwise, show picker if fuzzy finder available
+    local fuzzy = require("beads.fuzzy")
+    if fuzzy.is_available() then
+      fuzzy.pick_template(function(selected_template)
+        if selected_template then
+          local template = templates.resolve_template(selected_template)
+          if template then
+            ui.create_task_from_template(template)
+          end
+        end
+      end)
+    else
+      -- Fallback: show template list and prompt for input
+      vim.notify("Available templates: " .. table.concat(template_list, ", "), vim.log.levels.INFO)
+      vim.ui.input({ prompt = "Enter template name: " }, function(choice)
+        if choice and choice ~= "" then
+          local template = templates.resolve_template(choice)
+          if template then
+            ui.create_task_from_template(template)
+          else
+            vim.notify("Template not found: " .. choice, vim.log.levels.ERROR)
+          end
+        end
+      end)
+    end
+  end, {
+    desc = "Create a new task from a template",
+    nargs = "?",
+  })
 end
 
 -- Initialize commands on load

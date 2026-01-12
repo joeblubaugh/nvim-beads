@@ -138,4 +138,24 @@ function M.get_available_finders()
   return available
 end
 
+--- Pick a template from available templates
+--- @param on_select function Callback with selected template name
+function M.pick_template(on_select)
+  local templates = require("beads.templates")
+  local template_list = templates.list_templates()
+
+  if #template_list == 0 then
+    vim.notify("No templates found", vim.log.levels.WARN)
+    return
+  end
+
+  -- Use vim.ui.select with the builtin finder since it's simple
+  vim.ui.select(template_list, {
+    prompt = "Select template: ",
+    format_item = function(item)
+      return item
+    end,
+  }, on_select)
+end
+
 return M

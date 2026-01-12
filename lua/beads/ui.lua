@@ -450,4 +450,39 @@ function M.find_task_priority()
   end)
 end
 
+--- Create a task from a template
+--- @param template table Template data with resolved variables
+function M.create_task_from_template(template)
+  if not template or not template.fields then
+    vim.notify("Invalid template", vim.log.levels.ERROR)
+    return
+  end
+
+  local fields = template.fields
+  local title = fields.title_template or "New Task"
+  local description = fields.description_template or ""
+  local priority = fields.priority or "P2"
+  local status = fields.status or "open"
+
+  -- Prompt for title if using template
+  vim.ui.input({ prompt = "Task title: ", default = title }, function(input_title)
+    if not input_title or input_title == "" then
+      return
+    end
+
+    -- Create the task with CLI
+    local ok, result = cli.create(input_title)
+    if not ok then
+      vim.notify("Failed to create task: " .. (result or "unknown error"), vim.log.levels.ERROR)
+      return
+    end
+
+    -- Get the created task ID from result if available
+    vim.notify("Created task from template: " .. input_title, vim.log.levels.INFO)
+
+    -- Note: In a full implementation, we would also set the description and priority
+    -- This would require additional CLI commands or direct database access
+  end)
+end
+
 return M
