@@ -33,6 +33,11 @@ local operation_counter = 0
 local config = {
   max_concurrent = 3,
   queue_enabled = true,
+  default_timeout = 30000,      -- milliseconds
+  retry_enabled = false,
+  retry_max_attempts = 3,
+  notify_on_complete = true,
+  notify_on_error = true,
 }
 
 --- Create a unique operation ID
@@ -80,10 +85,16 @@ function M.run(name, fn, args, on_complete)
         operations.failed[op_id] = operation
       end
 
+      -- Send notification
+      notify_result(operation)
+
       -- Call completion callback
       if operation.on_complete then
         operation.on_complete(success, result)
       end
+
+      -- Process queue to handle any pending operations
+      M.process_queue()
     end)
   end)
 
@@ -343,6 +354,83 @@ end
 --- @return integer Number of operations in queue
 function M.get_queue_size()
   return #operations.queue
+end
+
+--- Set default timeout for operations
+--- @param timeout integer Timeout in milliseconds
+function M.set_default_timeout(timeout)
+  config.default_timeout = timeout
+end
+
+--- Enable/disable automatic retry on failure
+--- @param enabled boolean Enable or disable retry
+function M.set_retry_enabled(enabled)
+  config.retry_enabled = enabled
+end
+
+--- Set maximum retry attempts
+--- @param max integer Maximum attempts
+function M.set_retry_max_attempts(max)
+  config.retry_max_attempts = max
+end
+
+--- Enable/disable completion notifications
+--- @param enabled boolean Enable or disable
+function M.set_notify_on_complete(enabled)
+  config.notify_on_complete = enabled
+end
+
+--- Enable/disable error notifications
+--- @param enabled boolean Enable or disable
+function M.set_notify_on_error(enabled)
+  config.notify_on_error = enabled
+end
+
+--- Send notification for operation result
+--- @param operation table Operation object
+local function notify_result(operation)
+  if operation.status == "completed" and config.notify_on_complete then
+    vim.notify(operation.name .. " completed successfully", vim.log.levels.INFO)
+  elseif operation.status == "failed" and config.notify_on_error then
+    local msg = operation.name .. " failed"
+    if operation.result then
+      msg = msg .. ": " .. tostring(operation.result)
+    end
+    vim.notify(msg, vim.log.levels.ERROR)
+  end
+end
+
+--- Retry an operation
+--- @param op_id string Original operation ID
+--- @return string New operation ID
+function M.retry(op_id)
+  local op = operations.completed[op_id] or operations.failed[op_id]
+  if not op then
+    return nil
+  end
+
+  -- Increment retry count
+  op.retry_count = (op.retry_count or 0) + 1
+
+  if op.retry_count > config.retry_max_attempts then
+    vim.notify("Max retry attempts exceeded for " .. op.name, vim.log.levels.WARN)
+    return nil
+  end
+
+  -- Run the operation again
+  return M.run(op.name, op.fn, op.args, op.on_complete)
+end
+
+--- Get configuration
+--- @return table Current configuration
+function M.get_config()
+  return vim.deepcopy(config)
+end
+
+--- Set configuration
+--- @param new_config table Configuration updates
+function M.set_config(new_config)
+  config = vim.tbl_extend("force", config, new_config)
 end
 
 return M
