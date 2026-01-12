@@ -168,6 +168,38 @@ Advanced filtering is supported with multiple filter types:
 - Display shows filtered count (e.g., "5/12 tasks")
 - Clear visual indication of active filters
 
+### Fuzzy Finder Integration
+
+The plugin provides integrated fuzzy finder support with multiple backends:
+
+**Supported Backends:**
+- **telescope.nvim** - Full-featured, highly configurable picker
+- **fzf-lua** - Fast, command-line like fuzzy finder
+- **builtin** - Native Neovim vim.ui.select (always available)
+
+**Commands:**
+
+```vim
+" Find and select a task with fuzzy finder
+:BeadsFindTask
+
+" Find and update task status interactively
+:BeadsFindStatus
+
+" Find and update task priority interactively
+:BeadsFindPriority
+
+" Switch between fuzzy finder backends
+:BeadsSetFinder telescope|fzf_lua|builtin
+```
+
+**Features:**
+- Automatic backend detection and fallback
+- Graceful degradation to builtin picker if external finders unavailable
+- Smart backend selection (telescope > fzf-lua > builtin)
+- Switch backends at runtime with `:BeadsSetFinder`
+- Each finder displays formatted task information
+
 ### Keymaps
 
 With default configuration enabled:
@@ -178,6 +210,9 @@ With default configuration enabled:
 - `<leader>br` - Refresh task list
 - `<leader>bf` - Open filter prompt
 - `<leader>bF` - Clear all filters
+- `<leader>bt` - Find task with fuzzy finder
+- `<leader>bS` - Find and update task status
+- `<leader>bP` - Find and update task priority
 
 In task list:
 - `q` - Close window
@@ -196,6 +231,10 @@ In task list:
 - **`lua/beads/filters.lua`** - Task filtering logic
 - **`lua/beads/commands.lua`** - Neovim user commands
 - **`lua/beads/keymaps.lua`** - Default keymaps
+- **`lua/beads/fuzzy.lua`** - Fuzzy finder abstraction layer
+- **`lua/beads/fuzzy_telescope.lua`** - Telescope.nvim picker implementation
+- **`lua/beads/fuzzy_fzf.lua`** - fzf-lua implementation
+- **`lua/beads/fuzzy_builtin.lua`** - Built-in vim.ui.select implementation
 
 ### Plugin Entry Point
 
