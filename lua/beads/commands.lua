@@ -233,6 +233,17 @@ function M.setup()
     vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
   end, { desc = "Show recommended workflow templates" })
 
+  -- Helper function for template-based task creation
+  local function create_task_from_template(template_name)
+    local templates = require("beads.templates")
+    local template = templates.resolve_template(template_name)
+    if not template then
+      vim.notify("Template not found: " .. template_name, vim.log.levels.ERROR)
+      return
+    end
+    ui.create_task_from_template(template)
+  end
+
   -- Create task from template
   vim.api.nvim_create_user_command("BeadsCreateFromTemplate", function(opts)
     local templates = require("beads.templates")
@@ -245,13 +256,7 @@ function M.setup()
 
     -- If template specified as argument, use it
     if opts.args ~= "" then
-      local template_name = opts.args
-      local template = templates.resolve_template(template_name)
-      if not template then
-        vim.notify("Template not found: " .. template_name, vim.log.levels.ERROR)
-        return
-      end
-      ui.create_task_from_template(template)
+      create_task_from_template(opts.args)
       return
     end
 
@@ -260,10 +265,7 @@ function M.setup()
     if fuzzy.is_available() then
       fuzzy.pick_template(function(selected_template)
         if selected_template then
-          local template = templates.resolve_template(selected_template)
-          if template then
-            ui.create_task_from_template(template)
-          end
+          create_task_from_template(selected_template)
         end
       end)
     else
@@ -271,12 +273,7 @@ function M.setup()
       vim.notify("Available templates: " .. table.concat(template_list, ", "), vim.log.levels.INFO)
       vim.ui.input({ prompt = "Enter template name: " }, function(choice)
         if choice and choice ~= "" then
-          local template = templates.resolve_template(choice)
-          if template then
-            ui.create_task_from_template(template)
-          else
-            vim.notify("Template not found: " .. choice, vim.log.levels.ERROR)
-          end
+          create_task_from_template(choice)
         end
       end)
     end
@@ -284,6 +281,23 @@ function M.setup()
     desc = "Create a new task from a template",
     nargs = "?",
   })
+
+  -- Shortcut commands for common templates
+  vim.api.nvim_create_user_command("BeadsCreateBug", function(opts)
+    create_task_from_template("bug")
+  end, { desc = "Create a new bug report task" })
+
+  vim.api.nvim_create_user_command("BeadsCreateFeature", function(opts)
+    create_task_from_template("feature")
+  end, { desc = "Create a new feature request task" })
+
+  vim.api.nvim_create_user_command("BeadsCreateDoc", function(opts)
+    create_task_from_template("documentation")
+  end, { desc = "Create a new documentation task" })
+
+  vim.api.nvim_create_user_command("BeadsCreateChore", function(opts)
+    create_task_from_template("chore")
+  end, { desc = "Create a new maintenance/chore task" })
 end
 
 -- Initialize commands on load
