@@ -23,10 +23,17 @@ local operations = {
   active = {},
   completed = {},
   failed = {},
+  queue = {},
 }
 
 -- Operation counter for unique IDs
 local operation_counter = 0
+
+-- Configuration
+local config = {
+  max_concurrent = 3,
+  queue_enabled = true,
+}
 
 --- Create a unique operation ID
 --- @return string Operation ID
@@ -255,6 +262,87 @@ end
 --- @return string Operation ID
 function M.sync(on_complete)
   return M.run("sync", cli.sync, {}, on_complete)
+end
+
+--- Queue an operation for later execution
+--- @param name string Operation name
+--- @param fn function Function to execute
+--- @param args table Arguments
+--- @param on_complete function Completion callback
+--- @return string Operation ID
+function M.queue(name, fn, args, on_complete)
+  local op_id = create_operation_id()
+
+  local queued_op = {
+    id = op_id,
+    name = name,
+    fn = fn,
+    args = args,
+    on_complete = on_complete,
+  }
+
+  table.insert(operations.queue, queued_op)
+
+  -- Process queue if enabled
+  if config.queue_enabled then
+    M.process_queue()
+  end
+
+  return op_id
+end
+
+--- Process operation queue
+function M.process_queue()
+  if not config.queue_enabled or #operations.queue == 0 then
+    return
+  end
+
+  -- Count current active operations
+  local active_count = 0
+  for _ in pairs(operations.active) do
+    active_count = active_count + 1
+  end
+
+  -- Execute queued operations if below max concurrent
+  while active_count < config.max_concurrent and #operations.queue > 0 do
+    local queued = table.remove(operations.queue, 1)
+    if queued then
+      M.run(queued.name, queued.fn, queued.args, queued.on_complete)
+      active_count = active_count + 1
+    end
+  end
+end
+
+--- Get queued operations
+--- @return table List of queued operation IDs
+function M.get_queued()
+  local queued = {}
+  for _, op in ipairs(operations.queue) do
+    table.insert(queued, op.id)
+  end
+  return queued
+end
+
+--- Set maximum concurrent operations
+--- @param max integer Maximum number of concurrent operations
+function M.set_max_concurrent(max)
+  config.max_concurrent = max
+  M.process_queue()
+end
+
+--- Enable/disable operation queuing
+--- @param enabled boolean Enable or disable queuing
+function M.set_queue_enabled(enabled)
+  config.queue_enabled = enabled
+  if enabled then
+    M.process_queue()
+  end
+end
+
+--- Get number of queued operations
+--- @return integer Number of operations in queue
+function M.get_queue_size()
+  return #operations.queue
 end
 
 return M
