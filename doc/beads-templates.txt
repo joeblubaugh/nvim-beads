@@ -1,0 +1,204 @@
+*beads-templates.txt*  Beads Template System Documentation
+
+TEMPLATE SYSTEM                         *beads-templates*
+
+The Beads template system allows you to create standardized task templates
+for common workflows. Templates define default values, description templates,
+and checklist items to streamline task creation.
+
+TEMPLATE FORMAT                         *beads-template-format*
+
+Templates are stored as JSON files in `.beads/templates/` directory.
+Each template has the following structure:
+
+>
+  {
+    "name": "template_name",
+    "description": "What this template is for",
+    "fields": {
+      "priority": "P2",
+      "status": "open",
+      "title_template": "Title with {{variables}}",
+      "description_template": "Description body with {{variables}}",
+      "checklist": [
+        "Checklist item 1",
+        "Checklist item 2"
+      ]
+    }
+  }
+<
+
+Fields:
+- name: Unique template identifier
+- description: Human-readable description
+- priority: Default task priority (P1, P2, P3)
+- status: Default task status (open, in_progress, closed)
+- title_template: Template for task title with variable placeholders
+- description_template: Template for task description
+- checklist: List of checklist items for the task
+
+VARIABLES                               *beads-template-variables*
+
+Templates support variable substitution with {{variable}} syntax:
+
+{{date}}        Current date in YYYY-MM-DD format
+{{author}}      Author name from git config or $USER
+{{branch}}      Current git branch name
+{{custom}}      Custom variables registered in setup()
+
+Example:
+>
+  "title_template": "[BUG] Issue on {{branch}} reported by {{author}}"
+  "description_template": "Reported: {{date}}\nAuthor: {{author}}"
+<
+
+BUILT-IN TEMPLATES                      *beads-built-in-templates*
+
+The following templates are provided by default:
+
+BUG                                     *beads-template-bug*
+  Used for bug reports and defect tracking.
+  Priority: P2
+  Includes sections for reproduction steps and environment info.
+
+FEATURE                                 *beads-template-feature*
+  Used for feature requests and enhancements.
+  Priority: P2
+  Includes motivation, proposed solution, and alternatives.
+
+DOCUMENTATION                           *beads-template-documentation*
+  Used for documentation tasks.
+  Priority: P2
+  Includes checklist for different documentation types.
+
+CHORE                                   *beads-template-chore*
+  Used for maintenance and routine tasks.
+  Priority: P3
+  General-purpose template with minimal structure.
+
+USING TEMPLATES                         *beads-using-templates*
+
+List Available Templates ~
+>
+  :BeadsListTemplates
+<
+Shows all available template names.
+
+Create Task from Template ~
+>
+  :BeadsCreateFromTemplate [template_name]
+<
+Create a new task using a template. If fuzzy finder is available, you'll
+get a picker to select the template. Otherwise, you'll be prompted to
+enter the template name.
+
+With optional template_name argument, the template is used directly without
+the picker.
+
+Examples:
+>
+  :BeadsCreateFromTemplate              " Shows picker
+  :BeadsCreateFromTemplate bug          " Uses bug template directly
+<
+
+CREATING CUSTOM TEMPLATES                *beads-custom-templates*
+
+Creating a Template ~
+
+1. Create a JSON file in `.beads/templates/` directory:
+>
+  .beads/templates/my-template.json
+<
+
+2. Define the template structure with fields and checklist items:
+>
+  {
+    "name": "my-template",
+    "description": "My custom template",
+    "fields": {
+      "priority": "P2",
+      "status": "open",
+      "title_template": "[MY] {{title}}",
+      "description_template": "Template description",
+      "checklist": ["Item 1", "Item 2"]
+    }
+  }
+<
+
+3. Use the template immediately:
+>
+  :BeadsCreateFromTemplate my-template
+<
+
+Custom Variables in Setup ~
+
+Register custom variables in your init.lua:
+>
+  require("beads").setup({
+    custom_vars = {
+      team = "MyTeam",
+      project = "MyProject"
+    }
+  })
+<
+
+Then use in templates:
+>
+  "title_template": "[{{project}}] {{title}}"
+<
+
+BEST PRACTICES                          *beads-template-best-practices*
+
+- Keep templates focused on specific task types
+- Include a meaningful title template with {{branch}} or {{project}}
+- Add checklist items for all critical steps in your workflow
+- Use consistent naming conventions for templates
+- Document complex templates with detailed descriptions
+- Use {{author}} to track who created tasks
+- Use {{date}} to timestamp task creation
+- Test templates before committing to your repository
+
+TEMPLATE EXAMPLES                       *beads-template-examples*
+
+Code Review Template ~
+>
+  {
+    "name": "code-review",
+    "description": "Template for code review tasks",
+    "fields": {
+      "priority": "P2",
+      "status": "open",
+      "title_template": "[CODE-REVIEW] {{title}} ({{branch}})",
+      "description_template": "PR Author: {{author}}\nCreated: {{date}}\n\n## Scope\n\n## Review Checklist\n- [ ] Code style\n- [ ] Logic correctness\n- [ ] Tests included\n- [ ] Documentation",
+      "checklist": [
+        "Review code changes",
+        "Check test coverage",
+        "Verify documentation",
+        "Approve or request changes"
+      ]
+    }
+  }
+<
+
+Performance Task Template ~
+>
+  {
+    "name": "performance",
+    "description": "Template for performance improvement tasks",
+    "fields": {
+      "priority": "P1",
+      "status": "open",
+      "title_template": "[PERF] {{title}}",
+      "description_template": "Performance Issue\n\nAuthor: {{author}}\nDate: {{date}}\n\n## Current Behavior\n\n## Benchmark Results\n\n## Expected Behavior\n\n## Proposed Optimization",
+      "checklist": [
+        "Reproduce issue and benchmark",
+        "Identify bottleneck",
+        "Implement optimization",
+        "Verify improvement",
+        "Add performance test"
+      ]
+    }
+  }
+<
+
+ vim:tw=78:ts=8:ft=help:norl:
