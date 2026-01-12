@@ -16,6 +16,7 @@
 
 local M = {}
 local cli = require("beads.cli")
+local filters = require("beads.filters")
 
 -- UI state
 local task_list_bufnr = nil
@@ -76,6 +77,28 @@ function M.toggle_filter(filter_type, value)
     table.remove(filter_state[filter_type], idx)
   else
     table.insert(filter_state[filter_type], value)
+  end
+end
+
+--- Apply filters from user input string
+--- @param filter_string string Filter string (e.g., "priority:P1,status:open")
+function M.apply_filter_string(filter_string)
+  -- Reset filters
+  filter_state.priority = {}
+  filter_state.status = {}
+  filter_state.assignee = {}
+
+  -- Parse filter string
+  for part in string.gmatch(filter_string, "[^,]+") do
+    local key, value = string.match(part, "^%s*([^:]+):(.+)$")
+    if key and value then
+      key = string.gsub(key, "%s+", "")
+      value = string.gsub(value, "%s+", "")
+
+      if filter_state[key] then
+        table.insert(filter_state[key], value)
+      end
+    end
   end
 end
 
@@ -151,14 +174,33 @@ function M.show_task_list()
 
   current_tasks = task_list
 
+  -- Apply filters to task list
+  local filtered_tasks = filters.apply_filters(task_list, filter_state)
+
   -- Format and display tasks
-  local lines = { "# Beads Tasks", "" }
-  if #task_list == 0 then
-    table.insert(lines, "No tasks available")
+  local lines = { "# Beads Tasks" }
+
+  -- Show active filters
+  if filters.has_active_filters(filter_state) then
+    table.insert(lines, "Filters: " .. filters.get_filter_description(filter_state))
   else
-    for i, task in ipairs(task_list) do
+    table.insert(lines, "")
+  end
+
+  table.insert(lines, "")
+
+  if #filtered_tasks == 0 then
+    if #task_list > 0 then
+      table.insert(lines, "No tasks match active filters")
+    else
+      table.insert(lines, "No tasks available")
+    end
+  else
+    for i, task in ipairs(filtered_tasks) do
       table.insert(lines, format_task(task))
     end
+    table.insert(lines, "")
+    table.insert(lines, "(" .. #filtered_tasks .. "/" .. #task_list .. " tasks)")
   end
 
   vim.api.nvim_buf_set_lines(task_list_bufnr, 0, -1, false, lines)
@@ -184,6 +226,21 @@ function M.show_task_list()
   end, opts)
 
   vim.keymap.set("n", "r", function()
+    M.refresh_task_list()
+  end, opts)
+
+  -- Filter controls
+  vim.keymap.set("n", "f", function()
+    vim.ui.input({ prompt = "Filter (priority:P1,status:open,assignee:name): " }, function(input)
+      if input and input ~= "" then
+        M.apply_filter_string(input)
+        M.refresh_task_list()
+      end
+    end)
+  end, opts)
+
+  vim.keymap.set("n", "c", function()
+    M.clear_filters()
     M.refresh_task_list()
   end, opts)
 end
