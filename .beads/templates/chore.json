@@ -1,0 +1,17 @@
+{
+  "name": "chore",
+  "description": "Template for maintenance and chore tasks",
+  "fields": {
+    "priority": "P3",
+    "status": "open",
+    "title_template": "[CHORE] {{title}}",
+    "description_template": "## Task Description\n\n## Why is this needed?\n\n## Scope\n\n## Acceptance Criteria\n- [ ] ",
+    "checklist": [
+      "Plan approach",
+      "Implement",
+      "Test changes",
+      "Review",
+      "Merge"
+    ]
+  }
+}

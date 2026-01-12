@@ -1,0 +1,17 @@
+{
+  "name": "bug",
+  "description": "Template for bug reports",
+  "fields": {
+    "priority": "P2",
+    "status": "open",
+    "title_template": "[BUG] {{title}}",
+    "description_template": "## Description\n\n## Steps to Reproduce\n1. \n2. \n3. \n\n## Expected Behavior\n\n## Actual Behavior\n\n## Environment\n- OS: \n- Version: ",
+    "checklist": [
+      "Verify issue reproducible",
+      "Identify root cause",
+      "Implement fix",
+      "Add tests",
+      "Update documentation"
+    ]
+  }
+}
