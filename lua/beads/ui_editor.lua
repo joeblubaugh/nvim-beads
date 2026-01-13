@@ -2,6 +2,7 @@
 -- Handles task creation, editing, deletion, and detail viewing
 
 local M = {}
+local error_handling = require("beads.error_handling")
 local cli = require("beads.cli")
 local utils = require("beads.utils")
 local rendering = require("beads.ui_rendering")
@@ -261,9 +262,7 @@ function M.show_task_editor(mode, initial_data, refresh_callback)
 
       -- Schedule refresh after task is created to update task list
       vim.schedule(function()
-        if refresh_callback then
-          refresh_callback()
-        end
+        error_handling.safe_callback(refresh_callback)
       end)
     elseif mode == "create_child" then
       local opts = {
@@ -279,9 +278,7 @@ function M.show_task_editor(mode, initial_data, refresh_callback)
 
       -- Schedule refresh after task is created to update task list
       vim.schedule(function()
-        if refresh_callback then
-          refresh_callback()
-        end
+        error_handling.safe_callback(refresh_callback)
       end)
     else
       local update_opts = {}
@@ -305,9 +302,7 @@ function M.show_task_editor(mode, initial_data, refresh_callback)
 
         -- Schedule refresh after task is updated to update task list
         vim.schedule(function()
-          if refresh_callback then
-            refresh_callback()
-          end
+          error_handling.safe_callback(refresh_callback)
         end)
       end
     end
@@ -351,9 +346,7 @@ function M.update_task(id, field, value, refresh_callback)
   if result then
     vim.notify("Updated task " .. id, vim.log.levels.INFO)
     -- Refresh task list after update
-    if refresh_callback then
-      refresh_callback()
-    end
+    error_handling.safe_callback(refresh_callback)
   else
     vim.notify("Failed to update task: " .. (err or "unknown error"), vim.log.levels.ERROR)
   end
@@ -367,9 +360,7 @@ function M.close_task(id, refresh_callback)
   if result then
     vim.notify("Closed task " .. id, vim.log.levels.INFO)
     -- Refresh task list after closing
-    if refresh_callback then
-      refresh_callback()
-    end
+    error_handling.safe_callback(refresh_callback)
   else
     vim.notify("Failed to close task: " .. (err or "unknown error"), vim.log.levels.ERROR)
   end
@@ -414,9 +405,7 @@ function M.delete_task(id, refresh_callback)
         -- Close detail view if open
         vim.cmd("quit")
         -- Refresh task list
-        if refresh_callback then
-          refresh_callback()
-        end
+        error_handling.safe_callback(refresh_callback)
       else
         vim.notify("Failed to delete task: " .. (err or "unknown error"), vim.log.levels.ERROR)
       end

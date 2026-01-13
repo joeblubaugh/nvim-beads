@@ -17,6 +17,9 @@ local M = {}
 -- Plugin version
 M.version = "0.1.0"
 
+-- Safe require function for graceful module loading
+local error_handling = require("beads.error_handling")
+
 -- Default configuration
 local defaults = {
   keymaps = true,
@@ -92,44 +95,78 @@ function M.setup(opts)
     end
   end
 
-  -- Load submodules
-  require("beads.commands")
+  -- Load submodules with safe requires
+  local commands = error_handling.safe_require("beads.commands")
+  if not commands then
+    vim.notify("Warning: Failed to load beads commands module", vim.log.levels.WARN)
+  end
 
   if config.keymaps then
-    require("beads.keymaps").setup()
+    local keymaps = error_handling.safe_require("beads.keymaps")
+    if keymaps and keymaps.setup then
+      error_handling.safe_callback(keymaps.setup)
+    else
+      vim.notify("Warning: Failed to load beads keymaps module", vim.log.levels.WARN)
+    end
   end
 
   -- Initialize UI
-  require("beads.ui").init()
+  local ui = error_handling.safe_require("beads.ui")
+  if ui and ui.init then
+    error_handling.safe_callback(ui.init)
+  else
+    vim.notify("Warning: Failed to load beads UI module", vim.log.levels.WARN)
+  end
 
   -- Initialize fuzzy finder
-  require("beads.fuzzy").init()
+  local fuzzy = error_handling.safe_require("beads.fuzzy")
+  if fuzzy and fuzzy.init then
+    error_handling.safe_callback(fuzzy.init)
+  else
+    vim.notify("Warning: Failed to load beads fuzzy module", vim.log.levels.WARN)
+  end
 
   -- Initialize theme
-  local theme = require("beads.theme")
-  if config.auto_theme then
-    theme.auto_detect()
+  local theme = error_handling.safe_require("beads.theme")
+  if theme then
+    if config.auto_theme and theme.auto_detect then
+      error_handling.safe_callback(theme.auto_detect)
+    elseif theme.set_theme then
+      error_handling.safe_callback(theme.set_theme, config.theme)
+    end
+    if theme.apply_theme then
+      error_handling.safe_callback(theme.apply_theme)
+    end
   else
-    theme.set_theme(config.theme)
+    vim.notify("Warning: Failed to load beads theme module", vim.log.levels.WARN)
   end
-  theme.apply_theme()
 
   -- Setup auto-sync if enabled
   if config.auto_sync then
-    local sync = require("beads.sync")
-    sync.watch_beads_dir()
-    sync.start_auto_sync(config.sync_interval)
+    local sync = error_handling.safe_require("beads.sync")
+    if not sync then
+      vim.notify("Warning: Failed to load beads sync module - auto-sync disabled", vim.log.levels.WARN)
+    else
+      if sync.watch_beads_dir then
+        error_handling.safe_callback(sync.watch_beads_dir)
+      end
+      if sync.start_auto_sync then
+        error_handling.safe_callback(sync.start_auto_sync, config.sync_interval)
+      end
 
-    -- Create autocmd group
-    vim.api.nvim_create_augroup("nvim_beads", { clear = true })
+      -- Create autocmd group
+      vim.api.nvim_create_augroup("nvim_beads", { clear = true })
 
-    -- Clean up on exit
-    vim.api.nvim_create_autocmd("VimLeavePre", {
-      group = "nvim_beads",
-      callback = function()
-        sync.stop_auto_sync()
-      end,
-    })
+      -- Clean up on exit
+      vim.api.nvim_create_autocmd("VimLeavePre", {
+        group = "nvim_beads",
+        callback = function()
+          if sync and sync.stop_auto_sync then
+            error_handling.safe_callback(sync.stop_auto_sync)
+          end
+        end,
+      })
+    end
   end
 end
 
@@ -140,9 +177,9 @@ function M.get_config()
 end
 
 --- Get the beads module for low-level operations
---- @return table Beads module
+--- @return table Beads module or nil if not available
 function M.beads()
-  return require("beads.cli")
+  return error_handling.safe_require("beads.cli")
 end
 
 --- Save sidebar configuration for persistence

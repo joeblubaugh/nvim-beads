@@ -15,6 +15,7 @@
 -- Template system for Beads task creation
 local M = {}
 
+local error_handling = require("beads.error_handling")
 local json = vim.json
 
 -- Template structure
@@ -45,14 +46,26 @@ function M.load_template(template_name)
   -- Try JSON first
   local json_path = templates_dir .. "/" .. template_name .. ".json"
   local ok, content = pcall(vim.fn.readfile, json_path)
-  if ok and content then
-    local json_str = table.concat(content, "\n")
-    local template = json.decode(json_str)
-    if M.validate_template(template) then
-      return template
-    end
+  if not ok or not content then
+    -- Template file not found or couldn't be read
+    return nil
   end
 
+  local decode_ok, template = pcall(function()
+    local json_str = table.concat(content, "\n")
+    return json.decode(json_str)
+  end)
+
+  if not decode_ok or not template then
+    vim.notify("Failed to decode template: " .. template_name, vim.log.levels.WARN)
+    return nil
+  end
+
+  if M.validate_template(template) then
+    return template
+  end
+
+  vim.notify("Template has invalid structure: " .. template_name, vim.log.levels.WARN)
   return nil
 end
 
@@ -199,18 +212,37 @@ end
 --- @return string Author name
 local function get_author()
   local ok, result = pcall(vim.fn.system, "git config user.name")
-  if ok and result ~= "" then
+  if not ok then
+    -- git command failed, try environment
+    local env_user = vim.fn.environ().USER
+    if env_user then
+      return env_user
+    end
+    return "Unknown"
+  end
+
+  if result and result ~= "" then
     return result:gsub("\n", "")
   end
 
-  return vim.fn.environ().USER or "Unknown"
+  -- git user.name not configured, use environment
+  local env_user = vim.fn.environ().USER
+  if env_user then
+    return env_user
+  end
+  return "Unknown"
 end
 
 --- Get current git branch
 --- @return string Branch name or "main" if not in git repo
 local function get_branch()
   local ok, result = pcall(vim.fn.system, "git rev-parse --abbrev-ref HEAD")
-  if ok and result ~= "" then
+  if not ok then
+    -- Not in a git repo or git command failed
+    return "main"
+  end
+
+  if result and result ~= "" then
     return result:gsub("\n", "")
   end
 
@@ -281,7 +313,7 @@ function M.create_task_from_template(template_name, callback)
   local template = M.resolve_template(template_name)
   if not template then
     vim.notify("Template not found: " .. template_name, vim.log.levels.ERROR)
-    if callback then callback(false, nil) end
+    error_handling.safe_callback(callback, false, nil)
     return
   end
 
@@ -292,12 +324,18 @@ function M.create_task_from_template(template_name, callback)
     { prompt = "Task title: ", default = fields.title_template or "" },
     function(title)
       if not title or title == "" then
-        if callback then callback(false, nil) end
+        error_handling.safe_callback(callback, false, nil)
         return
       end
 
       -- Create task with CLI
-      local cli = require("beads.cli")
+      local cli = error_handling.safe_require("beads.cli")
+      if not cli then
+        vim.notify("Failed to load CLI module", vim.log.levels.ERROR)
+        error_handling.safe_callback(callback, false, nil)
+        return
+      end
+
       local opts = {
         description = fields.description_template or "",
         priority = fields.priority or "P2",
@@ -309,10 +347,10 @@ function M.create_task_from_template(template_name, callback)
         -- Note: In a full implementation, we would also add checklist items
         -- For now, we just return success
         vim.notify("Task created from template: " .. title, vim.log.levels.INFO)
-        if callback then callback(true, task) end
+        error_handling.safe_callback(callback, true, task)
       else
         vim.notify("Failed to create task: " .. (err or "unknown error"), vim.log.levels.ERROR)
-        if callback then callback(false, nil) end
+        error_handling.safe_callback(callback, false, nil)
       end
     end
   )
