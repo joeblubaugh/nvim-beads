@@ -1027,6 +1027,11 @@ function M.show_task_editor(mode, initial_data)
       end
       local msg = from_template and "Created task from template: " or "Created task: "
       vim.notify(msg .. parsed_title, vim.log.levels.INFO)
+
+      -- Schedule refresh after task is created to update task list
+      vim.schedule(function()
+        M.refresh_task_list()
+      end)
     elseif mode == "create_child" then
       local opts = {
         description = parsed_description,
@@ -1038,6 +1043,11 @@ function M.show_task_editor(mode, initial_data)
         return
       end
       vim.notify("Created child task: " .. parsed_title, vim.log.levels.INFO)
+
+      -- Schedule refresh after task is created to update task list
+      vim.schedule(function()
+        M.refresh_task_list()
+      end)
     else
       local update_opts = {}
       if parsed_title ~= title then
@@ -1057,6 +1067,11 @@ function M.show_task_editor(mode, initial_data)
           return
         end
         vim.notify("Updated task: " .. task_id, vim.log.levels.INFO)
+
+        -- Schedule refresh after task is updated to update task list
+        vim.schedule(function()
+          M.refresh_task_list()
+        end)
       end
     end
 
@@ -1097,6 +1112,8 @@ function M.update_task(id, field, value)
   local result, err = cli.update(id, opts)
   if result then
     vim.notify("Updated task " .. id, vim.log.levels.INFO)
+    -- Refresh task list after update
+    M.refresh_task_list()
   else
     vim.notify("Failed to update task: " .. (err or "unknown error"), vim.log.levels.ERROR)
   end
@@ -1108,6 +1125,8 @@ function M.close_task(id)
   local result, err = cli.close(id)
   if result then
     vim.notify("Closed task " .. id, vim.log.levels.INFO)
+    -- Refresh task list after closing
+    M.refresh_task_list()
   else
     vim.notify("Failed to close task: " .. (err or "unknown error"), vim.log.levels.ERROR)
   end
