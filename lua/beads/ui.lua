@@ -328,13 +328,14 @@ function M.show_task_list()
   local lines = { "# Beads Tasks" }
   task_lines_map = {} -- Reset the map
 
-  -- Show active filters
+  -- Add status bar with task count and filter info
+  local status_bar = ""
   if filters.has_active_filters(filter_state) then
-    table.insert(lines, "Filters: " .. filters.get_filter_description(filter_state))
+    status_bar = "Tasks: " .. #filtered_tasks .. "/" .. #task_list .. " | Filters: " .. filters.get_filter_description(filter_state)
   else
-    table.insert(lines, "")
+    status_bar = "Tasks: " .. #filtered_tasks .. "/" .. #task_list
   end
-
+  table.insert(lines, "─ " .. status_bar .. " " .. string.rep("─", math.max(0, 78 - #status_bar)))
   table.insert(lines, "")
 
   if #filtered_tasks == 0 then
