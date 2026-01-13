@@ -23,6 +23,7 @@ local theme = require("beads.theme")
 local task_list_bufnr = nil
 local task_list_winid = nil
 local current_tasks = {}
+local task_lines_map = {} -- Map from line number to task ID for navigation
 
 -- Filter state
 local filter_state = {
@@ -325,6 +326,7 @@ function M.show_task_list()
 
   -- Format and display tasks
   local lines = { "# Beads Tasks" }
+  task_lines_map = {} -- Reset the map
 
   -- Show active filters
   if filters.has_active_filters(filter_state) then
@@ -344,8 +346,16 @@ function M.show_task_list()
   else
     -- Build and display tree view of tasks
     local tree_lines = build_task_tree(filtered_tasks)
+    local task_idx = 1
     for _, line in ipairs(tree_lines) do
       table.insert(lines, line)
+      -- Extract task ID from the line and map it to line number
+      -- Task lines have format with brackets around the ID
+      local id = line:match("%[(nvim%-beads%-[^%]]+)%]")
+      if id then
+        task_lines_map[#lines] = id -- Store task ID at this line number
+      end
+      task_idx = task_idx + 1
     end
     table.insert(lines, "")
     table.insert(lines, "(" .. #filtered_tasks .. "/" .. #task_list .. " tasks)")
@@ -408,6 +418,37 @@ function M.show_task_list()
     end
     if id then
       M.delete_task(id)
+    end
+  end, opts)
+
+  -- Keyboard navigation with j/k
+  vim.keymap.set("n", "j", function()
+    -- Move down to next task line
+    local current_line = vim.api.nvim_win_get_cursor(task_list_winid)[1]
+    local next_line = current_line + 1
+
+    -- Skip non-task lines and find next task line
+    while next_line <= vim.api.nvim_buf_line_count(task_list_bufnr) do
+      if task_lines_map[next_line] then
+        vim.api.nvim_win_set_cursor(task_list_winid, {next_line, 0})
+        break
+      end
+      next_line = next_line + 1
+    end
+  end, opts)
+
+  vim.keymap.set("n", "k", function()
+    -- Move up to previous task line
+    local current_line = vim.api.nvim_win_get_cursor(task_list_winid)[1]
+    local prev_line = current_line - 1
+
+    -- Skip non-task lines and find previous task line
+    while prev_line >= 1 do
+      if task_lines_map[prev_line] then
+        vim.api.nvim_win_set_cursor(task_list_winid, {prev_line, 0})
+        break
+      end
+      prev_line = prev_line - 1
     end
   end, opts)
 end
