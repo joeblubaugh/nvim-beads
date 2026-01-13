@@ -24,6 +24,7 @@ local task_list_bufnr = nil
 local task_list_winid = nil
 local current_tasks = {}
 local task_lines_map = {} -- Map from line number to task ID for navigation
+local sidebar_visible = false -- Track sidebar visibility for toggle
 
 -- Filter state
 local filter_state = {
@@ -36,6 +37,22 @@ local filter_state = {
 function M.init()
   -- Create autocommand group for beads
   vim.api.nvim_create_augroup("beads_ui", { clear = true })
+end
+
+--- Toggle sidebar visibility
+function M.toggle_sidebar()
+  if task_list_winid and vim.api.nvim_win_is_valid(task_list_winid) then
+    -- Hide sidebar
+    vim.api.nvim_win_close(task_list_winid, false)
+    task_list_winid = nil
+    sidebar_visible = false
+    vim.notify("Sidebar hidden", vim.log.levels.INFO)
+  else
+    -- Show sidebar
+    M.show_task_list()
+    sidebar_visible = true
+    vim.notify("Sidebar shown", vim.log.levels.INFO)
+  end
 end
 
 --- Get current filter state
@@ -478,6 +495,11 @@ function M.show_task_list()
       end
       vim.notify("Sidebar width: " .. new_width, vim.log.levels.INFO)
     end
+  end, opts)
+
+  -- Toggle sidebar visibility
+  vim.keymap.set("n", "t", function()
+    M.toggle_sidebar()
   end, opts)
 end
 
