@@ -364,17 +364,16 @@ function M.show_task_detail(id)
   table.insert(lines, "- 'l' - List child issues (if epic)")
   table.insert(lines, "- 'q' - Close")
 
-  -- Open in new split first
-  vim.cmd("split")
-  local bufnr = vim.api.nvim_get_current_buf()
-
-  -- Set buffer options
+  -- Create and configure buffer
+  local bufnr = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
   vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
-
-  -- Set the lines
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
   vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
+
+  -- Open in new split
+  vim.cmd("split")
+  vim.api.nvim_set_current_buf(bufnr)
 
   -- Add keymap to edit task
   local opts = { noremap = true, silent = true, buffer = bufnr }
@@ -522,6 +521,13 @@ function M.show_task_editor(mode, initial_data)
   end
   table.insert(content, "- Press <C-c> or :q to cancel")
 
+  -- Create and configure buffer before defining functions that use it
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
+  vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
+  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+
   -- Helper function to handle save/create
   local function handle_save()
     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
@@ -583,17 +589,9 @@ function M.show_task_editor(mode, initial_data)
     vim.cmd("quit")
   end
 
-  -- Open in a split
+  -- Open in a split and display buffer
   vim.cmd("split")
-  local bufnr = vim.api.nvim_get_current_buf()
-
-  -- Set buffer options
-  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
-  vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
-
-  -- Set buffer content
-  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
-  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+  vim.api.nvim_set_current_buf(bufnr)
 
   -- Setup keymaps for this buffer
   local opts = { noremap = true, silent = true, buffer = bufnr }
