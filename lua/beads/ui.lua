@@ -218,17 +218,23 @@ end
 --- @return string Formatted task string
 local function format_task(task, indent_level)
   indent_level = indent_level or 0
-  local indent = string.rep("  ", indent_level)
   local status_symbol = (task.status == "closed" or task.status == "complete") and "✓" or "○"
   local priority = task.priority or "P2"
 
-  -- Add tree branch character for non-root items
-  local branch = ""
+  -- Use minimal indicator for child tasks (right arrow) instead of indentation
+  local child_indicator = ""
   if indent_level > 0 then
-    branch = "└─ "
+    child_indicator = "→ "
   end
 
-  return indent .. branch .. string.format("%s [%s] [%s] %s: %s", status_symbol, priority, task.id, task.status or "open", task.title or task.name)
+  -- Truncate title to fit on single line (estimate max ~80 chars minus metadata)
+  local title = task.title or task.name or ""
+  local max_title_len = 60
+  if #title > max_title_len then
+    title = title:sub(1, max_title_len - 1) .. "…"
+  end
+
+  return child_indicator .. string.format("%s [%s] [%s] %s: %s", status_symbol, priority, task.id, task.status or "open", title)
 end
 
 --- Build a hierarchical task list for tree display
