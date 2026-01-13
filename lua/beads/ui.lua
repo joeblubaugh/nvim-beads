@@ -531,12 +531,6 @@ function M.show_task_editor(mode, initial_data)
 
   -- Set buffer content BEFORE opening the split
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
-
-  -- Open in a split
-  vim.cmd("split")
-  vim.api.nvim_set_current_buf(bufnr)
-
-  -- Make buffer editable after opening
   vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
 
   -- Helper function to handle save/create
@@ -599,6 +593,11 @@ function M.show_task_editor(mode, initial_data)
     -- Close the buffer
     vim.cmd("quit")
   end
+
+  -- Open in a split
+  vim.cmd("split")
+  vim.api.nvim_set_current_buf(bufnr)
+  vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
 
   -- Setup keymaps for this buffer
   local opts = { noremap = true, silent = true, buffer = bufnr }
