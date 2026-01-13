@@ -94,6 +94,10 @@ if not vim then
         -- Return formatted time string
         return "0.000"
       end,
+      reltimeMs = function(reltime)
+        -- Return milliseconds as a number
+        return 0
+      end,
     },
 
     api = {

@@ -204,7 +204,8 @@ describe("beads.progress", function()
       progress.update("test", 50)
 
       local bar = progress.get_bar("test", 10)
-      assert.equals(10, string.len(bar))
+      -- Width is 10 chars, but each char is 3 bytes in UTF-8, so 30 total
+      assert.equals(30, string.len(bar))
       assert.matches("█", bar)
       assert.matches("░", bar)
     end)
