@@ -25,6 +25,8 @@ local task_list_winid = nil
 local current_tasks = {}
 local task_lines_map = {} -- Map from line number to task ID for navigation
 local sidebar_visible = false -- Track sidebar visibility for toggle
+local preview_bufnr = nil -- Preview window buffer
+local preview_winid = nil -- Preview window ID
 
 -- Filter state
 local filter_state = {
@@ -45,7 +47,11 @@ end
 --- Toggle sidebar visibility
 function M.toggle_sidebar()
   if task_list_winid and vim.api.nvim_win_is_valid(task_list_winid) then
-    -- Hide sidebar
+    -- Hide sidebar and preview
+    if preview_winid and vim.api.nvim_win_is_valid(preview_winid) then
+      vim.api.nvim_win_close(preview_winid, false)
+      preview_winid = nil
+    end
     vim.api.nvim_win_close(task_list_winid, false)
     task_list_winid = nil
     sidebar_visible = false
@@ -247,6 +253,64 @@ end
 --- @return boolean True if task has no dot in ID (parent)
 local function is_parent_task(task)
   return not task.id:match("%.")
+end
+
+--- Show task preview in a floating window
+--- @param task table Task object to preview
+local function show_task_preview(task)
+  if not task then
+    return
+  end
+
+  -- Close existing preview if open
+  if preview_winid and vim.api.nvim_win_is_valid(preview_winid) then
+    vim.api.nvim_win_close(preview_winid, true)
+    preview_winid = nil
+  end
+
+  -- Create preview buffer
+  preview_bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(preview_bufnr, "buftype", "nofile")
+  vim.api.nvim_buf_set_option(preview_bufnr, "bufhidden", "wipe")
+
+  -- Format preview content
+  local lines = {
+    "# " .. (task.title or task.name or "Task"),
+    "",
+    "ID: " .. (task.id or ""),
+    "Status: " .. (task.status or "open"),
+    "Priority: " .. (task.priority or "P2"),
+  }
+
+  if task.description and task.description ~= "" then
+    table.insert(lines, "")
+    table.insert(lines, "## Description")
+    -- Split description by newlines
+    for desc_line in tostring(task.description):gmatch("[^\n]+") do
+      table.insert(lines, desc_line)
+    end
+  end
+
+  vim.api.nvim_buf_set_lines(preview_bufnr, 0, -1, false, lines)
+  vim.api.nvim_buf_set_option(preview_bufnr, "modifiable", false)
+
+  -- Create floating window to the right of sidebar
+  local width = 50
+  local height = math.min(#lines + 2, vim.api.nvim_get_option("lines") - 5)
+  local col = math.max(1, vim.api.nvim_get_option("columns") - width - 2)
+  local row = 1
+
+  preview_winid = vim.api.nvim_open_win(preview_bufnr, false, {
+    relative = "editor",
+    row = row,
+    col = col,
+    width = width,
+    height = height,
+    style = "minimal",
+    border = "rounded",
+  })
+
+  vim.api.nvim_win_set_option(preview_winid, "cursorline", true)
 end
 
 --- Get parent ID from a child task ID
@@ -452,6 +516,11 @@ function M.show_task_list()
       id = line:match("%[([^%]]+)%]%s*[^%[]*$")
     end
     if id then
+      -- Close the preview window if open
+      if preview_winid and vim.api.nvim_win_is_valid(preview_winid) then
+        vim.api.nvim_win_close(preview_winid, true)
+        preview_winid = nil
+      end
       -- Close the task list window first
       if task_list_winid and vim.api.nvim_win_is_valid(task_list_winid) then
         vim.api.nvim_win_close(task_list_winid, true)
@@ -503,6 +572,20 @@ function M.show_task_list()
     while next_line <= vim.api.nvim_buf_line_count(task_list_bufnr) do
       if task_lines_map[next_line] then
         vim.api.nvim_win_set_cursor(task_list_winid, {next_line, 0})
+        -- Show preview for the selected task
+        local task_id = task_lines_map[next_line]
+        if task_id then
+          local task = nil
+          for _, t in ipairs(current_tasks) do
+            if t.id == task_id then
+              task = t
+              break
+            end
+          end
+          if task then
+            show_task_preview(task)
+          end
+        end
         break
       end
       next_line = next_line + 1
@@ -518,6 +601,20 @@ function M.show_task_list()
     while prev_line >= 1 do
       if task_lines_map[prev_line] then
         vim.api.nvim_win_set_cursor(task_list_winid, {prev_line, 0})
+        -- Show preview for the selected task
+        local task_id = task_lines_map[prev_line]
+        if task_id then
+          local task = nil
+          for _, t in ipairs(current_tasks) do
+            if t.id == task_id then
+              task = t
+              break
+            end
+          end
+          if task then
+            show_task_preview(task)
+          end
+        end
         break
       end
       prev_line = prev_line - 1
@@ -583,6 +680,12 @@ end
 
 --- Refresh the task list
 function M.refresh_task_list()
+  -- Close preview when refreshing
+  if preview_winid and vim.api.nvim_win_is_valid(preview_winid) then
+    vim.api.nvim_win_close(preview_winid, true)
+    preview_winid = nil
+  end
+
   if task_list_winid and vim.api.nvim_win_is_valid(task_list_winid) then
     M.show_task_list()
   else
