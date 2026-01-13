@@ -38,6 +38,11 @@ local filter_state = {
 -- Search state
 local search_query = nil
 
+-- Sync state
+local sync_state = "idle" -- idle, syncing, synced, failed
+local last_sync_time = nil -- Timestamp of last successful sync
+local sync_spinner_index = 0
+
 --- Initialize UI
 function M.init()
   -- Create autocommand group for beads
@@ -168,6 +173,47 @@ function M.apply_filter_string(filter_string)
         table.insert(filter_state[key], value)
       end
     end
+  end
+end
+
+--- Set sync state
+--- @param state string Sync state: "idle", "syncing", "synced", or "failed"
+function M.set_sync_state(state)
+  sync_state = state
+  if state == "synced" then
+    last_sync_time = os.time()
+  end
+  M.refresh_task_list()
+end
+
+--- Get formatted sync status indicator
+--- @return string Sync status text
+local function get_sync_indicator()
+  if sync_state == "syncing" then
+    local spinners = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
+    sync_spinner_index = (sync_spinner_index + 1) % #spinners
+    return spinners[sync_spinner_index + 1] .. " Syncing..."
+  elseif sync_state == "synced" then
+    if last_sync_time then
+      local diff = os.time() - last_sync_time
+      local time_str = ""
+      if diff < 60 then
+        time_str = "now"
+      elseif diff < 3600 then
+        time_str = math.floor(diff / 60) .. "m ago"
+      elseif diff < 86400 then
+        time_str = math.floor(diff / 3600) .. "h ago"
+      else
+        time_str = math.floor(diff / 86400) .. "d ago"
+      end
+      return "✓ Last sync: " .. time_str
+    else
+      return "✓ Synced"
+    end
+  elseif sync_state == "failed" then
+    return "✗ Sync failed"
+  else
+    return "○ Ready"
   end
 end
 
@@ -483,7 +529,9 @@ function M.show_task_list()
   if filters.has_active_filters(filter_state) then
     status_bar = status_bar .. " | Filters: " .. filters.get_filter_description(filter_state)
   end
-  table.insert(lines, "─ " .. status_bar .. " " .. string.rep("─", math.max(0, 78 - #status_bar)))
+  -- Add sync indicator to the right side
+  local sync_indicator = get_sync_indicator()
+  table.insert(lines, "─ " .. status_bar .. " | " .. sync_indicator .. " " .. string.rep("─", math.max(0, 78 - #status_bar - #sync_indicator - 3)))
   table.insert(lines, "")
 
   if #filtered_tasks == 0 then
@@ -1067,12 +1115,21 @@ end
 
 --- Sync with remote
 function M.sync()
-  local ok, result = cli.sync()
-  if ok then
-    vim.notify("Synced with remote", vim.log.levels.INFO)
-  else
-    vim.notify("Failed to sync: " .. (result or "unknown error"), vim.log.levels.ERROR)
-  end
+  M.set_sync_state("syncing")
+
+  -- Run sync in a scheduled function to allow UI update
+  vim.schedule(function()
+    local ok, result = cli.sync()
+    if ok then
+      M.set_sync_state("synced")
+      vim.notify("Synced with remote", vim.log.levels.INFO)
+      -- Refresh task list after successful sync
+      M.refresh_task_list()
+    else
+      M.set_sync_state("failed")
+      vim.notify("Failed to sync: " .. (result or "unknown error"), vim.log.levels.ERROR)
+    end
+  end)
 end
 
 --- Find and select task using fuzzy finder
