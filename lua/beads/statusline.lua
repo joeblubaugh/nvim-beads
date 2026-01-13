@@ -17,6 +17,7 @@
 local M = {}
 
 local cli = require("beads.cli")
+local utils = require("beads.utils")
 
 -- Cached task stats
 local cache = {
@@ -55,15 +56,8 @@ local function get_task_stats()
     }
   end
 
-  -- Handle both array and object responses
-  local task_list = {}
-  if type(tasks) == "table" then
-    if tasks[1] then
-      task_list = tasks
-    else
-      task_list = { tasks }
-    end
-  end
+  -- Normalize task list
+  local task_list = utils.normalize_response(tasks)
 
   -- Count tasks by status
   local stats = {
@@ -135,15 +129,8 @@ function M.get_priority_info()
     return ""
   end
 
-  -- Handle both array and object responses
-  local task_list = {}
-  if type(tasks) == "table" then
-    if tasks[1] then
-      task_list = tasks
-    else
-      task_list = { tasks }
-    end
-  end
+  -- Normalize task list
+  local task_list = utils.normalize_response(tasks)
 
   if #task_list == 0 then
     return ""

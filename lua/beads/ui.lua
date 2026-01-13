@@ -18,6 +18,7 @@ local M = {}
 local cli = require("beads.cli")
 local filters = require("beads.filters")
 local theme = require("beads.theme")
+local utils = require("beads.utils")
 
 -- UI state
 local task_list_bufnr = nil
@@ -493,23 +494,7 @@ function M.show_task_list()
     task_list_bufnr, task_list_winid = create_float_window()
   end
 
-  -- Handle both array and object responses
-  local task_list = {}
-  if type(tasks) == "table" then
-    -- Check if it's an array (has numeric keys) or a single object
-    if tasks[1] then
-      -- Array of tasks (even if empty, this is correct)
-      task_list = tasks
-    elseif next(tasks) then
-      -- Non-empty object (single task)
-      task_list = { tasks }
-    else
-      -- Empty array or empty object - treat as no tasks
-      task_list = {}
-    end
-  end
-
-  current_tasks = task_list
+  current_tasks = utils.normalize_response(tasks)
 
   -- Apply filters to task list
   local filtered_tasks = filters.apply_filters(task_list, filter_state)
@@ -763,26 +748,13 @@ function M.show_task_detail(id)
     return
   end
 
-  -- Handle both array and object responses from bd show
-  local task
-  if type(response) == "table" then
-    if response[1] then
-      -- Array response - take first element
-      task = response[1]
-    elseif next(response) then
-      -- Single object response
-      task = response
-    else
-      -- Empty response
-      vim.notify("Task not found", vim.log.levels.ERROR)
-      return
-    end
-  end
-
-  if not task then
-    vim.notify("Failed to parse task data", vim.log.levels.ERROR)
+  -- Normalize response and get first task
+  local task_list = utils.normalize_response(response)
+  if #task_list == 0 then
+    vim.notify("Task not found", vim.log.levels.ERROR)
     return
   end
+  local task = task_list[1]
 
   -- Format task details
   local lines = {
@@ -1162,17 +1134,8 @@ function M.find_task()
     return
   end
 
-  -- Handle both array and object responses
-  local task_list = {}
-  if type(tasks) == "table" then
-    if tasks[1] then
-      task_list = tasks
-    else
-      task_list = { tasks }
-    end
-  end
-
-  -- Open fuzzy finder
+  -- Open fuzzy finder with normalized task list
+  local task_list = utils.normalize_response(tasks)
   fuzzy.find_task(task_list, function(task)
     if task then
       M.show_task_detail(task.id)
@@ -1324,17 +1287,8 @@ function M.show_task_children(parent_id)
     return
   end
 
-  -- Handle both array and object responses
-  local child_list = {}
-  if type(children) == "table" then
-    if children[1] then
-      child_list = children
-    elseif next(children) then
-      child_list = { children }
-    else
-      child_list = {}
-    end
-  end
+  -- Normalize child issues response
+  local child_list = utils.normalize_response(children)
 
   -- Create new buffer for child issues
   local bufnr = vim.api.nvim_create_buf(false, true)
