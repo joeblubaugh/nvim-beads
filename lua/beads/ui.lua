@@ -530,12 +530,12 @@ function M.show_task_editor(mode, initial_data)
   end
   table.insert(content, "- Press <C-c> or :q to cancel")
 
-  -- Set buffer content
-  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
-
-  -- Open in a split
+  -- Open in a split first
   vim.cmd("split")
   vim.api.nvim_set_current_buf(bufnr)
+
+  -- Set buffer content after window is open
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
 
   -- Helper function to handle save/create
   local function handle_save()
