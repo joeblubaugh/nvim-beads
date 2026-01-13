@@ -17,6 +17,8 @@
 local M = {}
 local cli = require("beads.cli")
 local ui = require("beads.ui")
+local validation = require("beads.validation")
+local builder = require("beads.command_builder")
 
 --- Setup Neovim commands
 function M.setup()
@@ -42,12 +44,8 @@ function M.setup()
 
   -- Show task details
   vim.api.nvim_create_user_command("BeadsShow", function(opts)
-    local id = opts.args
-    if id == "" then
-      vim.notify("Task ID required", vim.log.levels.ERROR)
-      return
-    end
-    ui.show_task_detail(id)
+    local id = validation.require_id(opts)
+    if id then ui.show_task_detail(id) end
   end, {
     desc = "Show details of a Beads task",
     nargs = 1,
@@ -55,15 +53,13 @@ function M.setup()
 
   -- Update task
   vim.api.nvim_create_user_command("BeadsUpdate", function(opts)
-    local args = vim.split(opts.args, " ")
-    if #args < 2 then
-      vim.notify("Usage: :BeadsUpdate <id> <field> <value>", vim.log.levels.ERROR)
-      return
+    local args = validation.require_min_args(opts, 2, ":BeadsUpdate <id> <field> <value>")
+    if args then
+      local id = args[1]
+      local field = args[2]
+      local value = table.concat(args, " ", 3)
+      ui.update_task(id, field, value)
     end
-    local id = args[1]
-    local field = args[2]
-    local value = table.concat(args, " ", 3)
-    ui.update_task(id, field, value)
   end, {
     desc = "Update a Beads task",
     nargs = "+",
@@ -71,12 +67,8 @@ function M.setup()
 
   -- Close task
   vim.api.nvim_create_user_command("BeadsClose", function(opts)
-    local id = opts.args
-    if id == "" then
-      vim.notify("Task ID required", vim.log.levels.ERROR)
-      return
-    end
-    ui.close_task(id)
+    local id = validation.require_id(opts)
+    if id then ui.close_task(id) end
   end, {
     desc = "Close a Beads task",
     nargs = 1,
@@ -94,13 +86,11 @@ function M.setup()
 
   -- Filter tasks
   vim.api.nvim_create_user_command("BeadsFilter", function(opts)
-    local filter_str = opts.args
-    if filter_str == "" then
-      vim.notify("Usage: :BeadsFilter priority:P1,status:open,assignee:name", vim.log.levels.ERROR)
-      return
+    local filter_str = validation.require_arg(opts, ":BeadsFilter priority:P1,status:open,assignee:name")
+    if filter_str then
+      ui.apply_filter_string(filter_str)
+      ui.refresh_task_list()
     end
-    ui.apply_filter_string(filter_str)
-    ui.refresh_task_list()
   end, {
     desc = "Filter tasks by priority, status, or assignee",
     nargs = "+",
@@ -132,14 +122,12 @@ function M.setup()
 
   -- Set fuzzy finder backend
   vim.api.nvim_create_user_command("BeadsSetFinder", function(opts)
-    local backend = opts.args
-    if backend == "" then
-      vim.notify("Usage: :BeadsSetFinder telescope|fzf_lua|builtin", vim.log.levels.ERROR)
-      return
+    local backend = validation.require_arg(opts, ":BeadsSetFinder telescope|fzf_lua|builtin")
+    if backend then
+      local fuzzy = require("beads.fuzzy")
+      fuzzy.set_finder(backend)
+      vim.notify("Fuzzy finder backend set to: " .. backend, vim.log.levels.INFO)
     end
-    local fuzzy = require("beads.fuzzy")
-    fuzzy.set_finder(backend)
-    vim.notify("Fuzzy finder backend set to: " .. backend, vim.log.levels.INFO)
   end, {
     desc = "Set preferred fuzzy finder backend (telescope, fzf_lua, or builtin)",
     nargs = 1,
@@ -185,17 +173,15 @@ function M.setup()
 
   -- Set custom color
   vim.api.nvim_create_user_command("BeadsColor", function(opts)
-    local args = vim.split(opts.args, " ")
-    if #args < 2 then
-      vim.notify("Usage: :BeadsColor <key> <hex_color>", vim.log.levels.ERROR)
-      return
+    local args = validation.require_min_args(opts, 2, ":BeadsColor <key> <hex_color>")
+    if args then
+      local key = args[1]
+      local color = args[2]
+      local theme = require("beads.theme")
+      theme.set_color(key, color)
+      theme.apply_theme()
+      vim.notify("Color set: " .. key .. " = " .. color, vim.log.levels.INFO)
     end
-    local key = args[1]
-    local color = args[2]
-    local theme = require("beads.theme")
-    theme.set_color(key, color)
-    theme.apply_theme()
-    vim.notify("Color set: " .. key .. " = " .. color, vim.log.levels.INFO)
   end, {
     desc = "Set custom color for beads theme",
     nargs = "+",
@@ -210,13 +196,10 @@ function M.setup()
 
   -- List available templates
   vim.api.nvim_create_user_command("BeadsListTemplates", function(opts)
-    local templates = require("beads.templates")
-    local template_list = templates.list_templates()
-    if #template_list == 0 then
-      vim.notify("No templates found", vim.log.levels.WARN)
-      return
+    local template_list = validate_template_list()
+    if template_list then
+      vim.notify("Available templates:\n- " .. table.concat(template_list, "\n- "), vim.log.levels.INFO)
     end
-    vim.notify("Available templates:\n- " .. table.concat(template_list, "\n- "), vim.log.levels.INFO)
   end, { desc = "List available task templates" })
 
   -- Show recommended workflows
@@ -235,6 +218,13 @@ function M.setup()
     vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
   end, { desc = "Show recommended workflow templates" })
 
+  -- Helper function to validate template list
+  local function validate_template_list()
+    local templates = require("beads.templates")
+    local template_list = templates.list_templates()
+    return validation.require_non_empty_list(template_list, "No templates found") and template_list or nil
+  end
+
   -- Helper function for template-based task creation
   local function create_task_from_template(template_name)
     local templates = require("beads.templates")
@@ -248,13 +238,8 @@ function M.setup()
 
   -- Create task from template
   vim.api.nvim_create_user_command("BeadsCreateFromTemplate", function(opts)
-    local templates = require("beads.templates")
-    local template_list = templates.list_templates()
-
-    if #template_list == 0 then
-      vim.notify("No templates found", vim.log.levels.WARN)
-      return
-    end
+    local template_list = validate_template_list()
+    if not template_list then return end
 
     -- If template specified as argument, use it
     if opts.args ~= "" then
@@ -303,12 +288,8 @@ function M.setup()
 
   -- Delete task
   vim.api.nvim_create_user_command("BeadsDelete", function(opts)
-    local id = opts.args
-    if id == "" then
-      vim.notify("Task ID required", vim.log.levels.ERROR)
-      return
-    end
-    ui.delete_task(id)
+    local id = validation.require_id(opts)
+    if id then ui.delete_task(id) end
   end, {
     desc = "Delete a Beads task",
     nargs = 1,
@@ -321,12 +302,8 @@ function M.setup()
 
   -- Show children of an epic
   vim.api.nvim_create_user_command("BeadsShowChildren", function(opts)
-    local parent_id = opts.args
-    if parent_id == "" then
-      vim.notify("Parent task ID required", vim.log.levels.ERROR)
-      return
-    end
-    ui.show_task_children(parent_id)
+    local parent_id = validation.require_id(opts, "Parent task ID")
+    if parent_id then ui.show_task_children(parent_id) end
   end, {
     desc = "Show child issues of an epic",
     nargs = 1,
@@ -334,14 +311,12 @@ function M.setup()
 
   -- Create child issue
   vim.api.nvim_create_user_command("BeadsCreateChild", function(opts)
-    local args = vim.split(opts.args, " ", { trimempty = true })
-    if #args < 1 then
-      vim.notify("Usage: :BeadsCreateChild <parent_id> [title]", vim.log.levels.ERROR)
-      return
+    local args = validation.require_min_args(opts, 1, ":BeadsCreateChild <parent_id> [title]")
+    if args then
+      local parent_id = args[1]
+      local title = table.concat(args, " ", 2) or ""
+      ui.create_child_task(parent_id, title)
     end
-    local parent_id = args[1]
-    local title = table.concat(args, " ", 2) or ""
-    ui.create_child_task(parent_id, title)
   end, {
     desc = "Create a child issue under a parent epic",
     nargs = "+",
@@ -371,21 +346,15 @@ function M.setup()
 
   -- Set sidebar position
   vim.api.nvim_create_user_command("BeadsSidebarPosition", function(opts)
-    local position = opts.args
-    if position == "" then
-      vim.notify("Usage: :BeadsSidebarPosition left|right", vim.log.levels.ERROR)
-      return
+    local position = validation.require_arg(opts, ":BeadsSidebarPosition left|right")
+    if position and validation.validate_enum(position, { "left", "right" }, "Position") then
+      local beads = require("beads")
+      local config = beads.get_config()
+      config.sidebar_position = position
+      beads.save_sidebar_config()
+      vim.notify("Sidebar position set to: " .. position, vim.log.levels.INFO)
+      ui.refresh_task_list()
     end
-    if position ~= "left" and position ~= "right" then
-      vim.notify("Position must be 'left' or 'right'", vim.log.levels.ERROR)
-      return
-    end
-    local beads = require("beads")
-    local config = beads.get_config()
-    config.sidebar_position = position
-    beads.save_sidebar_config()
-    vim.notify("Sidebar position set to: " .. position, vim.log.levels.INFO)
-    ui.refresh_task_list()
   end, {
     desc = "Set sidebar position (left or right)",
     nargs = 1,
@@ -394,16 +363,14 @@ function M.setup()
   -- Set sidebar width
   vim.api.nvim_create_user_command("BeadsSidebarWidth", function(opts)
     local width = tonumber(opts.args)
-    if not width or width < 20 or width > 120 then
-      vim.notify("Width must be between 20 and 120", vim.log.levels.ERROR)
-      return
+    if validation.validate_range(width, 20, 120, "Width") then
+      local beads = require("beads")
+      local config = beads.get_config()
+      config.sidebar_width = width
+      beads.save_sidebar_config()
+      vim.notify("Sidebar width set to: " .. width, vim.log.levels.INFO)
+      ui.refresh_task_list()
     end
-    local beads = require("beads")
-    local config = beads.get_config()
-    config.sidebar_width = width
-    beads.save_sidebar_config()
-    vim.notify("Sidebar width set to: " .. width, vim.log.levels.INFO)
-    ui.refresh_task_list()
   end, {
     desc = "Set sidebar width (20-120 columns)",
     nargs = 1,
