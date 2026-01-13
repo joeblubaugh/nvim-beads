@@ -1081,6 +1081,8 @@ function M.show_task_children(parent_id)
   local lines = {
     "# Child Issues of " .. parent_id,
     "",
+    "Press 'p' to go back to parent issue | Press 'q' to close",
+    "",
   }
 
   if #child_list == 0 then
@@ -1117,6 +1119,12 @@ function M.show_task_children(parent_id)
       vim.cmd("quit")
       M.show_task_detail(id)
     end
+  end, opts)
+
+  -- Add 'p' to navigate to parent task
+  vim.keymap.set("n", "p", function()
+    vim.cmd("quit")
+    M.show_task_detail(parent_id)
   end, opts)
 end
 
