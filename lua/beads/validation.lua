@@ -61,16 +61,14 @@ end
 --- @param value string Value to check
 --- @param valid_values table List of valid values
 --- @param field_name string Field name for error message
---- @return boolean True if valid
+--- @return boolean, string|nil True if valid, error message if invalid
 function M.validate_enum(value, valid_values, field_name)
-  if not vim.tbl_contains(valid_values, value) then
-    vim.notify(
-      field_name .. " must be one of: " .. table.concat(valid_values, ", "),
-      vim.log.levels.ERROR
-    )
-    return false
+  if not value or not vim.tbl_contains(valid_values, value) then
+    local msg = field_name .. " must be one of: " .. table.concat(valid_values, ", ")
+    vim.notify(msg, vim.log.levels.ERROR)
+    return false, msg
   end
-  return true
+  return true, nil
 end
 
 --- Validate numeric range
@@ -78,28 +76,34 @@ end
 --- @param min number Minimum value
 --- @param max number Maximum value
 --- @param field_name string Field name for error message
---- @return boolean True if valid
+--- @return boolean, string|nil True if valid, error message if invalid
 function M.validate_range(value, min, max, field_name)
-  if not value or value < min or value > max then
-    vim.notify(
-      field_name .. " must be between " .. min .. " and " .. max,
-      vim.log.levels.ERROR
-    )
-    return false
+  -- Check if value is numeric
+  if not value or type(value) ~= "number" then
+    local msg = field_name .. " must be a number"
+    vim.notify(msg, vim.log.levels.ERROR)
+    return false, msg
   end
-  return true
+
+  -- Check if value is in range
+  if value < min or value > max then
+    local msg = field_name .. " must be between " .. min .. " and " .. max
+    vim.notify(msg, vim.log.levels.ERROR)
+    return false, msg
+  end
+  return true, nil
 end
 
 --- Validate non-empty list
 --- @param list table List to check
 --- @param message string Message to display if empty
---- @return boolean True if valid
+--- @return boolean, string|nil True if valid, error message if invalid
 function M.require_non_empty_list(list, message)
   if not list or #list == 0 then
     vim.notify(message, vim.log.levels.WARN)
-    return false
+    return false, message
   end
-  return true
+  return true, nil
 end
 
 return M
