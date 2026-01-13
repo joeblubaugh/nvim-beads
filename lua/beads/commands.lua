@@ -346,6 +346,65 @@ function M.setup()
     desc = "Create a child issue under a parent epic",
     nargs = "+",
   })
+
+  -- Toggle sidebar mode
+  vim.api.nvim_create_user_command("BeadsSidebar", function(opts)
+    local beads = require("beads")
+    local config = beads.get_config()
+    if opts.args == "on" then
+      config.sidebar_enabled = true
+      vim.notify("Beads sidebar enabled", vim.log.levels.INFO)
+    elseif opts.args == "off" then
+      config.sidebar_enabled = false
+      vim.notify("Beads sidebar disabled", vim.log.levels.INFO)
+    else
+      config.sidebar_enabled = not config.sidebar_enabled
+      local status = config.sidebar_enabled and "enabled" or "disabled"
+      vim.notify("Beads sidebar " .. status, vim.log.levels.INFO)
+    end
+    ui.refresh_task_list()
+  end, {
+    desc = "Toggle sidebar mode or set on/off",
+    nargs = "?",
+  })
+
+  -- Set sidebar position
+  vim.api.nvim_create_user_command("BeadsSidebarPosition", function(opts)
+    local position = opts.args
+    if position == "" then
+      vim.notify("Usage: :BeadsSidebarPosition left|right", vim.log.levels.ERROR)
+      return
+    end
+    if position ~= "left" and position ~= "right" then
+      vim.notify("Position must be 'left' or 'right'", vim.log.levels.ERROR)
+      return
+    end
+    local beads = require("beads")
+    local config = beads.get_config()
+    config.sidebar_position = position
+    vim.notify("Sidebar position set to: " .. position, vim.log.levels.INFO)
+    ui.refresh_task_list()
+  end, {
+    desc = "Set sidebar position (left or right)",
+    nargs = 1,
+  })
+
+  -- Set sidebar width
+  vim.api.nvim_create_user_command("BeadsSidebarWidth", function(opts)
+    local width = tonumber(opts.args)
+    if not width or width < 20 or width > 120 then
+      vim.notify("Width must be between 20 and 120", vim.log.levels.ERROR)
+      return
+    end
+    local beads = require("beads")
+    local config = beads.get_config()
+    config.sidebar_width = width
+    vim.notify("Sidebar width set to: " .. width, vim.log.levels.INFO)
+    ui.refresh_task_list()
+  end, {
+    desc = "Set sidebar width (20-120 columns)",
+    nargs = 1,
+  })
 end
 
 -- Initialize commands on load

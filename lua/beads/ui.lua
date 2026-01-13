@@ -138,6 +138,48 @@ local function create_float_window()
   return bufnr, winid
 end
 
+--- Create a sidebar window for task list
+--- @return integer Buffer number
+--- @return integer Window ID
+local function create_sidebar_window()
+  -- Get sidebar configuration
+  local beads = require("beads")
+  local config = beads.get_config()
+  local width = config.sidebar_width or 40
+  local position = config.sidebar_position or "left"
+
+  -- Create buffer
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
+  vim.api.nvim_buf_set_option(bufnr, "bufhidden", "wipe")
+  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+
+  -- Create vertical split on the specified side
+  -- Left sidebar: create split on left with "topleft vsplit"
+  -- Right sidebar: create split on right with "botright vsplit"
+  if position == "right" then
+    vim.cmd("botright vsplit")
+  else
+    vim.cmd("topleft vsplit")
+  end
+
+  -- Get the created window and set buffer
+  local winid = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(winid, bufnr)
+
+  -- Set window options
+  vim.api.nvim_win_set_option(winid, "cursorline", true)
+  vim.api.nvim_win_set_option(winid, "number", false)
+
+  -- Set window width
+  vim.api.nvim_win_set_width(winid, width)
+
+  -- Apply theme highlight groups
+  vim.api.nvim_win_set_option(winid, "winhighlight", "Normal:BeadsNormal,CursorLine:BeadsTaskListSelected")
+
+  return bufnr, winid
+end
+
 --- Format a task for display
 --- @param task table Task object
 --- @return string Formatted task string
@@ -183,8 +225,17 @@ function M.show_task_list()
     return
   end
 
-  -- Create floating window
-  task_list_bufnr, task_list_winid = create_float_window()
+  -- Determine which window type to use based on configuration
+  local beads = require("beads")
+  local config = beads.get_config()
+
+  if config.sidebar_enabled then
+    -- Create sidebar window
+    task_list_bufnr, task_list_winid = create_sidebar_window()
+  else
+    -- Create floating window
+    task_list_bufnr, task_list_winid = create_float_window()
+  end
 
   -- Handle both array and object responses
   local task_list = {}

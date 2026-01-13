@@ -20,10 +20,13 @@ M.version = "0.1.0"
 -- Default configuration
 local defaults = {
   keymaps = true,
-  auto_sync = false,     -- Disabled by default (causes lag spikes)
-  sync_interval = 10000, -- milliseconds (only used if auto_sync enabled)
-  theme = "dark",        -- color theme: dark or light
-  auto_theme = false,    -- auto-detect theme from background
+  auto_sync = false,        -- Disabled by default (causes lag spikes)
+  sync_interval = 10000,    -- milliseconds (only used if auto_sync enabled)
+  theme = "dark",           -- color theme: dark or light
+  auto_theme = false,       -- auto-detect theme from background
+  sidebar_enabled = false,  -- Use sidebar instead of floating window
+  sidebar_position = "left", -- Position: "left" or "right"
+  sidebar_width = 40,       -- Width of sidebar in columns
 }
 
 -- Global configuration
