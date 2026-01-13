@@ -345,7 +345,10 @@ function M.show_task_detail(id)
   if task.description then
     table.insert(lines, "")
     table.insert(lines, "## Description")
-    table.insert(lines, task.description)
+    -- Split description by newlines to avoid embedding newlines in a single line
+    for desc_line in tostring(task.description):gmatch("[^\n]+") do
+      table.insert(lines, desc_line)
+    end
   end
 
   if task.comments then
