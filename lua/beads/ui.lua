@@ -246,9 +246,10 @@ function M.show_task_list()
   vim.keymap.set("n", "<CR>", function()
     local line = vim.api.nvim_get_current_line()
     -- Extract task ID from line (format: "○ [P2] [id] status: title")
-    local id = line:match("%[([^%]]+)%]%s*[^%[]*$")
+    -- Use specific pattern first to avoid matching title brackets
+    local id = line:match("%[(nvim%-beads%-[^%]]+)%]")
     if not id then
-      id = line:match("%[(nvim%-beads%-[^%]]+)%]")
+      id = line:match("%[([^%]]+)%]%s*[^%[]*$")
     end
     if id then
       -- Close the task list window first
@@ -282,9 +283,10 @@ function M.show_task_list()
   vim.keymap.set("n", "d", function()
     local line = vim.api.nvim_get_current_line()
     -- Extract task ID from line (format: "○ [P2] [id] status: title")
-    local id = line:match("%[([^%]]+)%]%s*[^%[]*$")
+    -- Use specific pattern first to avoid matching title brackets
+    local id = line:match("%[(nvim%-beads%-[^%]]+)%]")
     if not id then
-      id = line:match("%[(nvim%-beads%-[^%]]+)%]")
+      id = line:match("%[([^%]]+)%]%s*[^%[]*$")
     end
     if id then
       M.delete_task(id)
@@ -308,16 +310,6 @@ function M.show_task_detail(id)
   if not response then
     vim.notify("Failed to load task: " .. (err or "unknown error"), vim.log.levels.ERROR)
     return
-  end
-
-  -- Debug: print response structure
-  vim.notify("DEBUG: response type = " .. type(response), vim.log.levels.INFO)
-  if type(response) == "table" then
-    vim.notify("DEBUG: response[1] = " .. tostring(response[1]), vim.log.levels.INFO)
-    if response[1] and type(response[1]) == "table" then
-      vim.notify("DEBUG: response[1].id = " .. tostring(response[1].id), vim.log.levels.INFO)
-      vim.notify("DEBUG: response[1].title = " .. tostring(response[1].title), vim.log.levels.INFO)
-    end
   end
 
   -- Handle both array and object responses from bd show
@@ -504,12 +496,13 @@ function M.show_task_editor(mode, initial_data)
   end
   table.insert(content, "")
   table.insert(content, "## Title")
-  table.insert(content, title)
+  table.insert(content, tostring(title))
   table.insert(content, "")
   table.insert(content, "## Description")
-  if description ~= "" then
+  local desc_str = tostring(description)
+  if desc_str ~= "" then
     -- Split description by newlines for multi-line display
-    for line in description:gmatch("[^\n]+") do
+    for line in desc_str:gmatch("[^\n]+") do
       table.insert(content, line)
     end
   else
@@ -517,7 +510,7 @@ function M.show_task_editor(mode, initial_data)
   end
   table.insert(content, "")
   table.insert(content, "## Priority")
-  table.insert(content, priority)
+  table.insert(content, tostring(priority))
   table.insert(content, "")
   table.insert(content, "---")
   table.insert(content, "")
