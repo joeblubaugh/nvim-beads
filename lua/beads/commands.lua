@@ -362,6 +362,7 @@ function M.setup()
       local status = config.sidebar_enabled and "enabled" or "disabled"
       vim.notify("Beads sidebar " .. status, vim.log.levels.INFO)
     end
+    beads.save_sidebar_config()
     ui.refresh_task_list()
   end, {
     desc = "Toggle sidebar mode or set on/off",
@@ -382,6 +383,7 @@ function M.setup()
     local beads = require("beads")
     local config = beads.get_config()
     config.sidebar_position = position
+    beads.save_sidebar_config()
     vim.notify("Sidebar position set to: " .. position, vim.log.levels.INFO)
     ui.refresh_task_list()
   end, {
@@ -399,6 +401,7 @@ function M.setup()
     local beads = require("beads")
     local config = beads.get_config()
     config.sidebar_width = width
+    beads.save_sidebar_config()
     vim.notify("Sidebar width set to: " .. width, vim.log.levels.INFO)
     ui.refresh_task_list()
   end, {

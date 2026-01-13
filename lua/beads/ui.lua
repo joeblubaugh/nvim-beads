@@ -531,6 +531,7 @@ function M.show_task_list()
     if config.sidebar_enabled then
       local new_width = math.max(20, (config.sidebar_width or 40) - 2)
       config.sidebar_width = new_width
+      beads.save_sidebar_config()
       if vim.api.nvim_win_is_valid(task_list_winid) then
         vim.api.nvim_win_set_width(task_list_winid, new_width)
       end
@@ -544,6 +545,7 @@ function M.show_task_list()
     if config.sidebar_enabled then
       local new_width = math.min(120, (config.sidebar_width or 40) + 2)
       config.sidebar_width = new_width
+      beads.save_sidebar_config()
       if vim.api.nvim_win_is_valid(task_list_winid) then
         vim.api.nvim_win_set_width(task_list_winid, new_width)
       end
