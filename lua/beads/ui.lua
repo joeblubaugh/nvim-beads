@@ -486,7 +486,6 @@ function M.show_task_editor(mode, initial_data)
   local bufnr = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
   vim.api.nvim_buf_set_option(bufnr, "bufhidden", "delete")
-  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
   vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
 
   -- Prepare content with instructions
@@ -530,12 +529,15 @@ function M.show_task_editor(mode, initial_data)
   end
   table.insert(content, "- Press <C-c> or :q to cancel")
 
-  -- Open in a split first
+  -- Set buffer content BEFORE opening the split
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
+
+  -- Open in a split
   vim.cmd("split")
   vim.api.nvim_set_current_buf(bufnr)
 
-  -- Set buffer content after window is open
-  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
+  -- Make buffer editable after opening
+  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
 
   -- Helper function to handle save/create
   local function handle_save()
