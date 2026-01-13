@@ -336,13 +336,14 @@ local function format_task(task, indent_level)
   end
 
   -- Truncate title to fit on single line (estimate max ~80 chars minus metadata)
+  -- Remove status text to reduce line length
   local title = task.title or task.name or ""
-  local max_title_len = 60
+  local max_title_len = 65
   if #title > max_title_len then
     title = title:sub(1, max_title_len - 1) .. "…"
   end
 
-  return child_indicator .. string.format("%s [%s] [%s] %s: %s", status_symbol, priority, task.id, task.status or "open", title)
+  return child_indicator .. string.format("%s [%s] [%s] %s", status_symbol, priority, task.id, title)
 end
 
 --- Build a hierarchical task list for tree display
