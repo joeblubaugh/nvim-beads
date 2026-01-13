@@ -488,6 +488,7 @@ function M.show_task_children(parent_id, refresh_callback)
 
   vim.keymap.set("n", "p", function()
     vim.cmd("quit")
+    M.show_task_detail(parent_id, refresh_callback)
   end, opts)
 end
 
