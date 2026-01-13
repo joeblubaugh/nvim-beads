@@ -373,7 +373,7 @@ end
 --- @return string Formatted task string
 local function format_task(task, indent_level)
   indent_level = indent_level or 0
-  local status_symbol = (task.status == "closed" or task.status == "complete") and "✓" or "○"
+  local status_symbol = utils.get_status_symbol(task)
   local priority = task.priority or "P2"
 
   -- Use minimal indicator for child tasks (right arrow) instead of indentation
@@ -497,7 +497,7 @@ function M.show_task_list()
   current_tasks = utils.normalize_response(tasks)
 
   -- Apply filters to task list
-  local filtered_tasks = filters.apply_filters(task_list, filter_state)
+  local filtered_tasks = filters.apply_filters(current_tasks, filter_state)
 
   -- Apply search filter
   filtered_tasks = filter_by_search(filtered_tasks, search_query)
@@ -1307,7 +1307,7 @@ function M.show_task_children(parent_id)
     table.insert(lines, "No child issues found")
   else
     for _, child in ipairs(child_list) do
-      local status_symbol = (child.status == "closed" or child.status == "complete") and "✓" or "○"
+      local status_symbol = utils.get_status_symbol(child)
       local priority = child.priority or "P2"
       table.insert(lines, string.format("%s [%s] [%s] %s: %s", status_symbol, priority, child.id, child.status or "open", child.title or child.name))
     end

@@ -76,11 +76,25 @@ function M.is_task_closed(task)
   return status == "closed" or status == "complete"
 end
 
---- Get status symbol for a task
+--- Get status symbol for a task based on status
 --- @param task table The task to get symbol for
---- @return string Status symbol (○ for open, ✓ for closed)
+--- @return string Status symbol (○=open, ◐=in_progress, ✓=closed, ●=blocked, ❄=deferred)
 function M.get_status_symbol(task)
-  return M.is_task_closed(task) and "✓" or "○"
+  if not task then
+    return "○"
+  end
+  local status = task.status or "open"
+  if status == "closed" or status == "complete" then
+    return "✓"
+  elseif status == "in_progress" then
+    return "◐"
+  elseif status == "blocked" then
+    return "●"
+  elseif status == "deferred" then
+    return "❄"
+  else
+    return "○"  -- default to open
+  end
 end
 
 --- Truncate a string to max length with ellipsis
