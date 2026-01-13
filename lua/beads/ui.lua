@@ -353,6 +353,7 @@ local function build_task_tree(task_list)
   local lines = {}
   local task_map = {}
   local children_map = {}
+  local displayed = {}
 
   -- Build maps for quick lookup and organize children
   for _, task in ipairs(task_list) do
@@ -374,13 +375,24 @@ local function build_task_tree(task_list)
     if is_parent_task(task) then
       -- Add parent
       table.insert(lines, format_task(task, 0))
+      displayed[task.id] = true
 
       -- Add children if any
       if children_map[task.id] then
         for _, child in ipairs(children_map[task.id]) do
           table.insert(lines, format_task(child, 1))
+          displayed[child.id] = true
         end
       end
+    end
+  end
+
+  -- Display any remaining tasks (children without their parent in the list, or orphaned tasks)
+  for _, task in ipairs(task_list) do
+    if not displayed[task.id] then
+      -- This is a task that wasn't displayed (likely a child without parent in the filtered list)
+      table.insert(lines, format_task(task, 0))
+      displayed[task.id] = true
     end
   end
 
