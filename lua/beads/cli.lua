@@ -64,6 +64,28 @@ function M.get_cache_stats()
   }
 end
 
+--- Invalidate ready cache
+function M.invalidate_ready_cache()
+  cache.ready.data = nil
+  cache.ready.time = 0
+end
+
+--- Invalidate show cache for a specific task ID
+--- @param id string Task ID to invalidate
+function M.invalidate_show_cache(id)
+  if id then
+    cache.show[id] = nil
+  else
+    cache.show = {}
+  end
+end
+
+--- Invalidate all caches (both ready and show)
+function M.invalidate_all_cache()
+  M.invalidate_ready_cache()
+  cache.show = {}
+end
+
 --- Check if cache entry is still valid
 --- @param entry_time number Last update time in milliseconds
 --- @param has_data boolean Whether cache has actual data
@@ -214,8 +236,7 @@ function M.create(title, opts)
 
   -- Invalidate ready cache when new task is created
   if result then
-    cache.ready.data = nil
-    cache.ready.time = 0
+    M.invalidate_ready_cache()
   end
 
   return result, err
@@ -247,9 +268,7 @@ function M.update(id, opts)
 
   -- Invalidate caches when task is updated
   if result then
-    cache.ready.data = nil
-    cache.ready.time = 0
-    cache.show[id] = nil
+    M.invalidate_all_cache()
   end
 
   return result, err
@@ -264,9 +283,7 @@ function M.close(id)
 
   -- Invalidate caches when task is closed
   if result then
-    cache.ready.data = nil
-    cache.ready.time = 0
-    cache.show[id] = nil
+    M.invalidate_all_cache()
   end
 
   return result, err
@@ -335,9 +352,7 @@ function M.delete(id, force)
 
   -- Invalidate caches when task is deleted
   if result then
-    cache.ready.data = nil
-    cache.ready.time = 0
-    cache.show[id] = nil
+    M.invalidate_all_cache()
   end
 
   return result, err
@@ -378,8 +393,7 @@ function M.create_child(parent_id, title, opts)
 
   -- Invalidate ready cache when new task is created
   if result then
-    cache.ready.data = nil
-    cache.ready.time = 0
+    M.invalidate_ready_cache()
   end
 
   return result, err
