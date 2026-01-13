@@ -50,6 +50,7 @@ function M.create_float_window()
 
   vim.api.nvim_win_set_option(winid, "cursorline", true)
   vim.api.nvim_win_set_option(winid, "number", false)
+  vim.api.nvim_win_set_option(winid, "wrap", false)
 
   -- Apply theme highlight groups to window
   vim.api.nvim_win_set_option(winid, "winhighlight", "Normal:BeadsNormal,Border:BeadsBorder,CursorLine:BeadsTaskListSelected")
@@ -89,6 +90,7 @@ function M.create_sidebar_window()
   -- Set window options
   vim.api.nvim_win_set_option(winid, "cursorline", true)
   vim.api.nvim_win_set_option(winid, "number", false)
+  vim.api.nvim_win_set_option(winid, "wrap", false)
 
   -- Set window width
   vim.api.nvim_win_set_width(winid, width)
