@@ -557,6 +557,24 @@ function M.show_task_detail(id)
     "Priority: " .. (task.priority or "P2"),
   }
 
+  -- Check if task has children
+  if is_parent_task(task) then
+    local children, _ = cli.list_children(task.id or id)
+    local child_count = 0
+    if type(children) == "table" then
+      if children[1] then
+        -- Array response
+        child_count = #children
+      elseif next(children) then
+        -- Single object response
+        child_count = 1
+      end
+    end
+    table.insert(lines, "Has Children: Yes (" .. child_count .. ")")
+  else
+    table.insert(lines, "Has Children: No")
+  end
+
   if task.description then
     table.insert(lines, "")
     table.insert(lines, "## Description")
