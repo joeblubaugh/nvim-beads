@@ -186,178 +186,12 @@ local function get_sync_indicator()
   end
 end
 
---- Create a floating window for task list
---- @return integer Buffer number
---- @return integer Window ID
-local function create_float_window()
-  local width = math.floor(vim.o.columns * 0.8)
-  local height = math.floor(vim.o.lines * 0.8)
-  local row = math.floor((vim.o.lines - height) / 2)
-  local col = math.floor((vim.o.columns - width) / 2)
-
-  -- Create buffer
-  local bufnr = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
-  vim.api.nvim_buf_set_option(bufnr, "bufhidden", "hide")
-  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
-
-  -- Create window
-  local winid = vim.api.nvim_open_win(bufnr, true, {
-    relative = "editor",
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    style = "minimal",
-    border = "rounded",
-  })
-
-  vim.api.nvim_win_set_option(winid, "cursorline", true)
-  vim.api.nvim_win_set_option(winid, "number", false)
-
-  -- Apply theme highlight groups to window
-  vim.api.nvim_win_set_option(winid, "winhighlight", "Normal:BeadsNormal,Border:BeadsBorder,CursorLine:BeadsTaskListSelected")
-
-  return bufnr, winid
-end
-
---- Create a sidebar window for task list
---- @return integer Buffer number
---- @return integer Window ID
-local function create_sidebar_window()
-  -- Get sidebar configuration
-  local beads = require("beads")
-  local config = beads.get_config()
-  local width = config.sidebar_width or 40
-  local position = config.sidebar_position or "left"
-
-  -- Create buffer
-  local bufnr = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
-  vim.api.nvim_buf_set_option(bufnr, "bufhidden", "wipe")
-  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
-
-  -- Create vertical split on the specified side
-  -- Left sidebar: create split on left with "topleft vsplit"
-  -- Right sidebar: create split on right with "botright vsplit"
-  if position == "right" then
-    vim.cmd("botright vsplit")
-  else
-    vim.cmd("topleft vsplit")
-  end
-
-  -- Get the created window and set buffer
-  local winid = vim.api.nvim_get_current_win()
-  vim.api.nvim_win_set_buf(winid, bufnr)
-
-  -- Set window options
-  vim.api.nvim_win_set_option(winid, "cursorline", true)
-  vim.api.nvim_win_set_option(winid, "number", false)
-
-  -- Set window width
-  vim.api.nvim_win_set_width(winid, width)
-
-  -- Apply theme highlight groups
-  vim.api.nvim_win_set_option(winid, "winhighlight", "Normal:BeadsNormal,CursorLine:BeadsTaskListSelected")
-
-  return bufnr, winid
-end
-
---- Check if task is a parent task
---- @param task table Task object
---- @return boolean True if task has no dot in ID (parent)
-local function is_parent_task(task)
-  return not task.id:match("%.")
-end
-
---- Show task preview in a floating window
---- @param task table Task object to preview
-local function show_task_preview(task)
-  if not task then
-    return
-  end
-
-  -- Close existing preview if open
-  if preview_winid and vim.api.nvim_win_is_valid(preview_winid) then
-    vim.api.nvim_win_close(preview_winid, true)
-    preview_winid = nil
-  end
-
-  -- Create preview buffer
-  preview_bufnr = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(preview_bufnr, "buftype", "nofile")
-  vim.api.nvim_buf_set_option(preview_bufnr, "bufhidden", "wipe")
-
-  -- Format preview content
-  local lines = {
-    "# " .. (task.title or task.name or "Task"),
-    "",
-    "ID: " .. (task.id or ""),
-    "Status: " .. (task.status or "open"),
-    "Priority: " .. (task.priority or "P2"),
-  }
-
-  if task.description and task.description ~= "" then
-    table.insert(lines, "")
-    table.insert(lines, "## Description")
-    -- Split description by newlines
-    for desc_line in tostring(task.description):gmatch("[^\n]+") do
-      table.insert(lines, desc_line)
-    end
-  end
-
-  vim.api.nvim_buf_set_lines(preview_bufnr, 0, -1, false, lines)
-  vim.api.nvim_buf_set_option(preview_bufnr, "modifiable", false)
-
-  -- Create floating window to the right of sidebar
-  local width = 50
-  local height = math.min(#lines + 2, vim.api.nvim_get_option("lines") - 5)
-  local col = math.max(1, vim.api.nvim_get_option("columns") - width - 2)
-  local row = 1
-
-  preview_winid = vim.api.nvim_open_win(preview_bufnr, false, {
-    relative = "editor",
-    row = row,
-    col = col,
-    width = width,
-    height = height,
-    style = "minimal",
-    border = "rounded",
-  })
-
-  vim.api.nvim_win_set_option(preview_winid, "cursorline", true)
-end
-
-
-
-
---- Get highlight group for task based on status
---- @param task table Task object
---- @return string Highlight group name
-local function get_task_highlight(task)
-  local status = task.status or "open"
-  if status == "in_progress" then
-    return "BeadsTaskInProgress"
-  elseif status == "closed" or status == "complete" then
-    return "BeadsTaskClosed"
-  else
-    return "BeadsTaskOpen"
-  end
-end
-
---- Get highlight group for priority
---- @param priority string Priority level
---- @return string Highlight group name
-local function get_priority_highlight(priority)
-  priority = priority or "P2"
-  return "BeadsPriority" .. priority
-end
 
 --- Show the task list in a floating window
 function M.show_task_list()
   -- Close existing window if open
-  if task_list_winid and vim.api.nvim_win_is_valid(task_list_winid) then
-    vim.api.nvim_win_close(task_list_winid, true)
+  if windows.task_list_winid and vim.api.nvim_win_is_valid(windows.task_list_winid) then
+    vim.api.nvim_win_close(windows.task_list_winid, true)
   end
 
   -- Fetch tasks
@@ -373,10 +207,10 @@ function M.show_task_list()
 
   if config.sidebar_enabled then
     -- Create sidebar window
-    task_list_bufnr, task_list_winid = create_sidebar_window()
+    windows.task_list_bufnr, windows.task_list_winid = windows.create_sidebar_window()
   else
     -- Create floating window
-    task_list_bufnr, task_list_winid = create_float_window()
+    windows.task_list_bufnr, windows.task_list_winid = windows.create_float_window()
   end
 
   current_tasks = utils.normalize_response(tasks)
@@ -428,14 +262,14 @@ function M.show_task_list()
     table.insert(lines, "(" .. #filtered_tasks .. "/" .. #current_tasks .. " tasks)")
   end
 
-  vim.api.nvim_buf_set_lines(task_list_bufnr, 0, -1, false, lines)
-  vim.api.nvim_buf_set_option(task_list_bufnr, "modifiable", false)
+  vim.api.nvim_buf_set_lines(windows.task_list_bufnr, 0, -1, false, lines)
+  vim.api.nvim_buf_set_option(windows.task_list_bufnr, "modifiable", false)
 
   -- Setup keymaps for task list
-  local opts = { noremap = true, silent = true, buffer = task_list_bufnr }
+  local opts = { noremap = true, silent = true, buffer = windows.task_list_bufnr }
   vim.keymap.set("n", "q", function()
-    vim.api.nvim_win_close(task_list_winid, true)
-    task_list_winid = nil
+    vim.api.nvim_win_close(windows.task_list_winid, true)
+    windows.task_list_winid = nil
   end, opts)
 
   vim.keymap.set("n", "<CR>", function()
@@ -448,14 +282,14 @@ function M.show_task_list()
     end
     if id then
       -- Close the preview window if open
-      if preview_winid and vim.api.nvim_win_is_valid(preview_winid) then
-        vim.api.nvim_win_close(preview_winid, true)
-        preview_winid = nil
+      if windows.preview_winid and vim.api.nvim_win_is_valid(windows.preview_winid) then
+        vim.api.nvim_win_close(windows.preview_winid, true)
+        windows.preview_winid = nil
       end
       -- Close the task list window first
-      if task_list_winid and vim.api.nvim_win_is_valid(task_list_winid) then
-        vim.api.nvim_win_close(task_list_winid, true)
-        task_list_winid = nil
+      if windows.task_list_winid and vim.api.nvim_win_is_valid(windows.task_list_winid) then
+        vim.api.nvim_win_close(windows.task_list_winid, true)
+        windows.task_list_winid = nil
       end
       M.show_task_detail(id)
     end
@@ -496,13 +330,13 @@ function M.show_task_list()
   -- Keyboard navigation with j/k
   vim.keymap.set("n", "j", function()
     -- Move down to next task line
-    local current_line = vim.api.nvim_win_get_cursor(task_list_winid)[1]
+    local current_line = vim.api.nvim_win_get_cursor(windows.task_list_winid)[1]
     local next_line = current_line + 1
 
     -- Skip non-task lines and find next task line
-    while next_line <= vim.api.nvim_buf_line_count(task_list_bufnr) do
+    while next_line <= vim.api.nvim_buf_line_count(windows.task_list_bufnr) do
       if task_lines_map[next_line] then
-        vim.api.nvim_win_set_cursor(task_list_winid, {next_line, 0})
+        vim.api.nvim_win_set_cursor(windows.task_list_winid, {next_line, 0})
         -- Show preview for the selected task
         local task_id = task_lines_map[next_line]
         if task_id then
@@ -514,7 +348,7 @@ function M.show_task_list()
             end
           end
           if task then
-            show_task_preview(task)
+            windows.show_task_preview(task)
           end
         end
         break
@@ -525,13 +359,13 @@ function M.show_task_list()
 
   vim.keymap.set("n", "k", function()
     -- Move up to previous task line
-    local current_line = vim.api.nvim_win_get_cursor(task_list_winid)[1]
+    local current_line = vim.api.nvim_win_get_cursor(windows.task_list_winid)[1]
     local prev_line = current_line - 1
 
     -- Skip non-task lines and find previous task line
     while prev_line >= 1 do
       if task_lines_map[prev_line] then
-        vim.api.nvim_win_set_cursor(task_list_winid, {prev_line, 0})
+        vim.api.nvim_win_set_cursor(windows.task_list_winid, {prev_line, 0})
         -- Show preview for the selected task
         local task_id = task_lines_map[prev_line]
         if task_id then
@@ -543,7 +377,7 @@ function M.show_task_list()
             end
           end
           if task then
-            show_task_preview(task)
+            windows.show_task_preview(task)
           end
         end
         break
@@ -560,8 +394,8 @@ function M.show_task_list()
       local new_width = math.max(20, (config.sidebar_width or 40) - 2)
       config.sidebar_width = new_width
       beads.save_sidebar_config()
-      if vim.api.nvim_win_is_valid(task_list_winid) then
-        vim.api.nvim_win_set_width(task_list_winid, new_width)
+      if vim.api.nvim_win_is_valid(windows.task_list_winid) then
+        vim.api.nvim_win_set_width(windows.task_list_winid, new_width)
       end
       vim.notify("Sidebar width: " .. new_width, vim.log.levels.INFO)
     end
@@ -574,8 +408,8 @@ function M.show_task_list()
       local new_width = math.min(120, (config.sidebar_width or 40) + 2)
       config.sidebar_width = new_width
       beads.save_sidebar_config()
-      if vim.api.nvim_win_is_valid(task_list_winid) then
-        vim.api.nvim_win_set_width(task_list_winid, new_width)
+      if vim.api.nvim_win_is_valid(windows.task_list_winid) then
+        vim.api.nvim_win_set_width(windows.task_list_winid, new_width)
       end
       vim.notify("Sidebar width: " .. new_width, vim.log.levels.INFO)
     end
@@ -612,12 +446,12 @@ end
 --- Refresh the task list
 function M.refresh_task_list()
   -- Close preview when refreshing
-  if preview_winid and vim.api.nvim_win_is_valid(preview_winid) then
-    vim.api.nvim_win_close(preview_winid, true)
-    preview_winid = nil
+  if windows.preview_winid and vim.api.nvim_win_is_valid(windows.preview_winid) then
+    vim.api.nvim_win_close(windows.preview_winid, true)
+    windows.preview_winid = nil
   end
 
-  if task_list_winid and vim.api.nvim_win_is_valid(task_list_winid) then
+  if windows.task_list_winid and vim.api.nvim_win_is_valid(windows.task_list_winid) then
     M.show_task_list()
   else
     vim.notify("Task list not open", vim.log.levels.INFO)
