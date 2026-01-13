@@ -139,6 +139,13 @@ describe("beads.async", function()
   end)
 
   describe("progress integration", function()
+    local progress = require("beads.progress")
+
+    before_each(function()
+      -- Clean up progress trackers between tests
+      progress.clear_completed()
+    end)
+
     it("should work with completion callbacks", function()
       local completed = false
 
@@ -148,6 +155,49 @@ describe("beads.async", function()
 
       -- Callback should execute asynchronously
       assert.truthy(completed == false or completed == true)
+    end)
+
+    it("should create progress tracker for operations", function()
+      local op_id = async.run("test_op", function() return "result" end, {})
+
+      -- Progress tracker should be created immediately
+      local progress_info = progress.get_operation(op_id)
+      assert.truthy(progress_info)
+      assert.equals("test_op", progress_info.title)
+    end)
+
+    it("should create progress tracker for queued operations", function()
+      async.set_queue_enabled(true)
+      local op_id = async.queue("queued_op", function() return true end, {})
+
+      local queued = async.get_queued()
+      assert.truthy(#queued > 0)
+
+      -- Check that queued operation has progress info
+      local op_info = queued[1]
+      assert.truthy(op_info.progress)
+    end)
+
+    it("should get unified operation info for active operations", function()
+      local op_id = async.run("unified_op", function() return "data" end, {})
+
+      local op_info = async.get_operation(op_id)
+      assert.truthy(op_info)
+      assert.equals("unified_op", op_info.name)
+      assert.truthy(op_info.status == "running" or op_info.status == "completed")
+    end)
+
+    it("should support progress helper functions", function()
+      local op_id = "test_op_" .. tostring(os.time())
+
+      -- Test progress helper functions
+      progress.create_operation(op_id, "test")
+      assert.truthy(progress.get_operation(op_id))
+
+      -- Mark as success
+      progress.succeed_operation(op_id, "result data")
+      assert.is_true(progress.is_operation_success(op_id))
+      assert.equals("result data", progress.get_operation_result(op_id))
     end)
   end)
 
@@ -241,6 +291,14 @@ describe("beads.progress", function()
   end)
 
   describe("progress summary", function()
+    before_each(function()
+      -- Clean up trackers between tests
+      progress.clear_completed()
+      for _, id in ipairs(progress.get_active()) do
+        progress.clear(id)
+      end
+    end)
+
     it("should get summary", function()
       progress.new("test1", 100, "Test 1")
       progress.new("test2", 100, "Test 2")

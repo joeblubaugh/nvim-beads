@@ -283,4 +283,59 @@ function M.get_summary()
   }
 end
 
+--- Create operation tracker (convenience for async operations)
+--- @param op_id string Operation ID
+--- @param name string Operation name
+--- @return table Progress tracker object
+function M.create_operation(op_id, name)
+  return M.new(op_id, 1, name)
+end
+
+--- Mark operation as succeeded
+--- @param op_id string Operation ID
+--- @param result any Operation result
+function M.succeed_operation(op_id, result)
+  local tracker = trackers[op_id]
+  if tracker then
+    tracker.result = result
+    tracker.success = true
+    M.complete(op_id, "completed")
+  end
+end
+
+--- Mark operation as failed
+--- @param op_id string Operation ID
+--- @param error any Error result
+function M.fail_operation(op_id, error)
+  local tracker = trackers[op_id]
+  if tracker then
+    tracker.result = error
+    tracker.success = false
+    M.fail(op_id, tostring(error))
+  end
+end
+
+--- Get operation result
+--- @param op_id string Operation ID
+--- @return any Result value
+function M.get_operation_result(op_id)
+  local tracker = trackers[op_id]
+  return tracker and tracker.result or nil
+end
+
+--- Check if operation succeeded
+--- @param op_id string Operation ID
+--- @return boolean Success status
+function M.is_operation_success(op_id)
+  local tracker = trackers[op_id]
+  return tracker and tracker.success or false
+end
+
+--- Get tracker by ID (alias for consistency)
+--- @param op_id string Operation ID
+--- @return table Tracker info
+function M.get_operation(op_id)
+  return M.get_info(op_id)
+end
+
 return M

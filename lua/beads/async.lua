@@ -17,6 +17,7 @@
 local M = {}
 
 local cli = require("beads.cli")
+local progress = require("beads.progress")
 
 -- Active operations tracking
 local operations = {
@@ -57,6 +58,7 @@ function M.run(name, fn, args, on_complete)
   args = args or {}
   local op_id = create_operation_id()
 
+  -- Create operation with progress tracking
   local operation = {
     id = op_id,
     name = name,
@@ -64,6 +66,9 @@ function M.run(name, fn, args, on_complete)
     start_time = vim.fn.reltime(),
     on_complete = on_complete,
   }
+
+  -- Create progress tracker for the operation
+  progress.create_operation(op_id, name)
 
   operations.active[op_id] = operation
 
@@ -76,6 +81,13 @@ function M.run(name, fn, args, on_complete)
       operation.end_time = vim.fn.reltime()
       operation.result = result
       operation.success = success
+
+      -- Update progress tracker with result
+      if success then
+        progress.succeed_operation(op_id, result)
+      else
+        progress.fail_operation(op_id, result)
+      end
 
       -- Move to completed/failed
       operations.active[op_id] = nil
@@ -140,6 +152,8 @@ function M.get_status(op_id)
     return nil
   end
 
+  -- Merge with progress tracker info
+  local progress_info = progress.get_operation(op_id)
   return {
     id = op.id,
     name = op.name,
@@ -148,6 +162,7 @@ function M.get_status(op_id)
     end_time = op.end_time,
     success = op.success,
     result = op.result,
+    elapsed = progress_info and progress_info.elapsed or M.get_elapsed(op_id),
   }
 end
 
@@ -155,6 +170,13 @@ end
 --- @param op_id string Operation ID
 --- @return integer Elapsed time in milliseconds
 function M.get_elapsed(op_id)
+  -- Try to get from progress tracker first
+  local progress_elapsed = progress.get_elapsed(op_id)
+  if progress_elapsed and progress_elapsed > 0 then
+    return progress_elapsed
+  end
+
+  -- Fallback to operation tracking
   local op = operations.active[op_id] or operations.completed[op_id] or operations.failed[op_id]
   if not op then
     return 0
@@ -168,8 +190,16 @@ end
 --- @return table List of active operation IDs
 function M.get_active()
   local active = {}
+  -- Get from operations tracking
   for op_id, _ in pairs(operations.active) do
     table.insert(active, op_id)
+  end
+  -- Also check progress trackers for running operations
+  local progress_active = progress.get_active()
+  for _, op_id in ipairs(progress_active) do
+    if not vim.tbl_contains(active, op_id) then
+      table.insert(active, op_id)
+    end
   end
   return active
 end
@@ -187,11 +217,19 @@ end
 
 --- Clear completed operations
 function M.clear_completed()
+  -- Also clear completed progress trackers
+  for op_id, _ in pairs(operations.completed) do
+    progress.clear(op_id)
+  end
   operations.completed = {}
 end
 
 --- Clear failed operations
 function M.clear_failed()
+  -- Also clear failed progress trackers
+  for op_id, _ in pairs(operations.failed) do
+    progress.clear(op_id)
+  end
   operations.failed = {}
 end
 
@@ -204,27 +242,33 @@ end
 --- Get operation statistics
 --- @return table Statistics
 function M.get_stats()
-  local total_active = 0
-  local total_completed = 0
-  local total_failed = 0
+  local async_stats = {
+    active = 0,
+    completed = 0,
+    failed = 0,
+  }
 
   for _ in pairs(operations.active) do
-    total_active = total_active + 1
+    async_stats.active = async_stats.active + 1
   end
 
   for _ in pairs(operations.completed) do
-    total_completed = total_completed + 1
+    async_stats.completed = async_stats.completed + 1
   end
 
   for _ in pairs(operations.failed) do
-    total_failed = total_failed + 1
+    async_stats.failed = async_stats.failed + 1
   end
 
+  -- Also get progress tracking stats for comparison
+  local progress_stats = progress.get_summary()
+
   return {
-    active = total_active,
-    completed = total_completed,
-    failed = total_failed,
-    total = total_active + total_completed + total_failed,
+    active = async_stats.active,
+    completed = async_stats.completed,
+    failed = async_stats.failed,
+    total = async_stats.active + async_stats.completed + async_stats.failed,
+    progress_stats = progress_stats,
   }
 end
 
@@ -284,6 +328,9 @@ end
 function M.queue(name, fn, args, on_complete)
   local op_id = create_operation_id()
 
+  -- Create progress tracker for queued operation
+  progress.create_operation(op_id, name)
+
   local queued_op = {
     id = op_id,
     name = name,
@@ -325,11 +372,17 @@ function M.process_queue()
 end
 
 --- Get queued operations
---- @return table List of queued operation IDs
+--- @return table List of queued operation info
 function M.get_queued()
   local queued = {}
   for _, op in ipairs(operations.queue) do
-    table.insert(queued, op.id)
+    local progress_info = progress.get_operation(op.id)
+    table.insert(queued, {
+      id = op.id,
+      name = op.name,
+      status = "queued",
+      progress = progress_info,
+    })
   end
   return queued
 end
@@ -390,7 +443,14 @@ end
 --- @param operation table Operation object
 local function notify_result(operation)
   if operation.status == "completed" and config.notify_on_complete then
-    vim.notify(operation.name .. " completed successfully", vim.log.levels.INFO)
+    local elapsed = M.get_elapsed(operation.id)
+    local time_str = ""
+    if elapsed > 1000 then
+      time_str = " (" .. math.floor(elapsed / 1000) .. "s)"
+    elseif elapsed > 0 then
+      time_str = " (" .. elapsed .. "ms)"
+    end
+    vim.notify(operation.name .. " completed successfully" .. time_str, vim.log.levels.INFO)
   elseif operation.status == "failed" and config.notify_on_error then
     local msg = operation.name .. " failed"
     if operation.result then
@@ -414,6 +474,11 @@ function M.retry(op_id)
 
   if op.retry_count > config.retry_max_attempts then
     vim.notify("Max retry attempts exceeded for " .. op.name, vim.log.levels.WARN)
+    -- Update progress tracker to reflect failure
+    local progress_info = progress.get_operation(op_id)
+    if progress_info then
+      progress.fail_operation(op_id, "Max retry attempts exceeded")
+    end
     return nil
   end
 
@@ -431,6 +496,42 @@ end
 --- @param new_config table Configuration updates
 function M.set_config(new_config)
   config = vim.tbl_extend("force", config, new_config)
+end
+
+--- Get unified operation info combining async and progress tracking
+--- @param op_id string Operation ID
+--- @return table Unified operation info
+function M.get_operation(op_id)
+  local op = operations.active[op_id] or operations.completed[op_id] or operations.failed[op_id]
+  if not op then
+    -- Try to get from progress tracking if not in operations
+    local progress_info = progress.get_operation(op_id)
+    if progress_info then
+      return {
+        id = op_id,
+        status = progress_info.status,
+        name = progress_info.title,
+        elapsed = progress_info.elapsed,
+        success = progress_info and progress.is_operation_success(op_id) or nil,
+        result = progress.get_operation_result(op_id),
+      }
+    end
+    return nil
+  end
+
+  -- Combine async operation info with progress info
+  local progress_info = progress.get_operation(op_id)
+  return {
+    id = op.id,
+    name = op.name,
+    status = op.status,
+    start_time = op.start_time,
+    end_time = op.end_time,
+    success = op.success,
+    result = op.result,
+    elapsed = progress_info and progress_info.elapsed or M.get_elapsed(op_id),
+    retry_count = op.retry_count or 0,
+  }
 end
 
 return M
