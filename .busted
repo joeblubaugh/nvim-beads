@@ -1,8 +1,9 @@
 return {
   default = {
-    lpath = './lua/?.lua;./lua/?/init.lua',
+    lpath = './lua/?.lua;./lua/?/init.lua;./tests/?.lua',
     cpath = '',
     verbose = true,
     coverage = false,
+    helper = './tests/helper.lua',
   }
 }
