@@ -331,11 +331,6 @@ function M.show_task_detail(id)
     return
   end
 
-  -- Create new buffer for task detail
-  local bufnr = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
-  vim.api.nvim_buf_set_option(bufnr, "bufhidden", "wipe")
-
   -- Format task details
   local lines = {
     "# Task: " .. (task.title or task.name or id),
@@ -369,13 +364,17 @@ function M.show_task_detail(id)
   table.insert(lines, "- 'l' - List child issues (if epic)")
   table.insert(lines, "- 'q' - Close")
 
+  -- Open in new split first
+  vim.cmd("split")
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  -- Set buffer options
+  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
+  vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
+
+  -- Set the lines
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
   vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
-
-  -- Open in new split
-  vim.cmd("split")
-  vim.api.nvim_set_current_buf(bufnr)
-  vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
 
   -- Add keymap to edit task
   local opts = { noremap = true, silent = true, buffer = bufnr }
@@ -482,12 +481,6 @@ function M.show_task_editor(mode, initial_data)
   local priority = initial_data.priority or "P2"
   local from_template = initial_data.from_template or false
 
-  -- Create a new buffer for editing
-  local bufnr = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
-  vim.api.nvim_buf_set_option(bufnr, "bufhidden", "delete")
-  vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
-
   -- Prepare content with instructions
   local content = {}
   if mode == "edit" then
@@ -528,10 +521,6 @@ function M.show_task_editor(mode, initial_data)
     table.insert(content, "- Press <C-s> to save changes")
   end
   table.insert(content, "- Press <C-c> or :q to cancel")
-
-  -- Set buffer content BEFORE opening the split
-  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
-  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
 
   -- Helper function to handle save/create
   local function handle_save()
@@ -596,8 +585,15 @@ function M.show_task_editor(mode, initial_data)
 
   -- Open in a split
   vim.cmd("split")
-  vim.api.nvim_set_current_buf(bufnr)
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  -- Set buffer options
+  vim.api.nvim_buf_set_option(bufnr, "buftype", "nofile")
   vim.api.nvim_buf_set_option(bufnr, "filetype", "markdown")
+
+  -- Set buffer content
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, content)
+  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
 
   -- Setup keymaps for this buffer
   local opts = { noremap = true, silent = true, buffer = bufnr }
