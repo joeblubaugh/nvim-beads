@@ -180,13 +180,78 @@ local function create_sidebar_window()
   return bufnr, winid
 end
 
+--- Check if task is a parent task
+--- @param task table Task object
+--- @return boolean True if task has no dot in ID (parent)
+local function is_parent_task(task)
+  return not task.id:match("%.")
+end
+
+--- Get parent ID from a child task ID
+--- @param id string Task ID like "nvim-beads-18m.1"
+--- @return string|nil Parent ID like "nvim-beads-18m"
+local function get_parent_id(id)
+  return id:match("^(.+)%.")
+end
+
 --- Format a task for display
 --- @param task table Task object
+--- @param indent_level number Indentation level (0 for parent, 1+ for children)
 --- @return string Formatted task string
-local function format_task(task)
+local function format_task(task, indent_level)
+  indent_level = indent_level or 0
+  local indent = string.rep("  ", indent_level)
   local status_symbol = (task.status == "closed" or task.status == "complete") and "✓" or "○"
   local priority = task.priority or "P2"
-  return string.format("%s [%s] [%s] %s: %s", status_symbol, priority, task.id, task.status or "open", task.title or task.name)
+
+  -- Add tree branch character for non-root items
+  local branch = ""
+  if indent_level > 0 then
+    branch = "└─ "
+  end
+
+  return indent .. branch .. string.format("%s [%s] [%s] %s: %s", status_symbol, priority, task.id, task.status or "open", task.title or task.name)
+end
+
+--- Build a hierarchical task list for tree display
+--- @param task_list table Flat list of tasks
+--- @return table Task lines for display with hierarchy
+local function build_task_tree(task_list)
+  local lines = {}
+  local task_map = {}
+  local children_map = {}
+
+  -- Build maps for quick lookup and organize children
+  for _, task in ipairs(task_list) do
+    task_map[task.id] = task
+
+    if not is_parent_task(task) then
+      local parent_id = get_parent_id(task.id)
+      if parent_id then
+        if not children_map[parent_id] then
+          children_map[parent_id] = {}
+        end
+        table.insert(children_map[parent_id], task)
+      end
+    end
+  end
+
+  -- Display parent tasks with their children
+  for _, task in ipairs(task_list) do
+    if is_parent_task(task) then
+      -- Add parent
+      table.insert(lines, format_task(task, 0))
+
+      -- Add children if any
+      if children_map[task.id] then
+        for _, child in ipairs(children_map[task.id]) do
+          table.insert(lines, format_task(child, 1))
+        end
+      end
+    end
+  end
+
+  return lines
 end
 
 --- Get highlight group for task based on status
@@ -277,8 +342,10 @@ function M.show_task_list()
       table.insert(lines, "No tasks available")
     end
   else
-    for i, task in ipairs(filtered_tasks) do
-      table.insert(lines, format_task(task))
+    -- Build and display tree view of tasks
+    local tree_lines = build_task_tree(filtered_tasks)
+    for _, line in ipairs(tree_lines) do
+      table.insert(lines, line)
     end
     table.insert(lines, "")
     table.insert(lines, "(" .. #filtered_tasks .. "/" .. #task_list .. " tasks)")
