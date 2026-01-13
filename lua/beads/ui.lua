@@ -33,6 +33,9 @@ local filter_state = {
   assignee = {},  -- assignee names
 }
 
+-- Search state
+local search_query = nil
+
 --- Initialize UI
 function M.init()
   -- Create autocommand group for beads
@@ -97,6 +100,47 @@ function M.toggle_filter(filter_type, value)
   else
     table.insert(filter_state[filter_type], value)
   end
+end
+
+--- Set search query for task filtering
+--- @param query string|nil Search query (nil to clear)
+function M.set_search_query(query)
+  search_query = query
+end
+
+--- Get current search query
+--- @return string|nil Current search query
+function M.get_search_query()
+  return search_query
+end
+
+--- Filter tasks by search query
+--- @param tasks table List of tasks to filter
+--- @param query string|nil Search query to match against
+--- @return table Filtered task list
+local function filter_by_search(tasks, query)
+  if not query or query == "" then
+    return tasks
+  end
+
+  local filtered = {}
+  -- Convert query to lowercase for case-insensitive search
+  local query_lower = query:lower()
+
+  for _, task in ipairs(tasks) do
+    local title = (task.title or task.name or ""):lower()
+    local id = (task.id or ""):lower()
+    local description = (task.description or ""):lower()
+
+    -- Search in title, ID, and description
+    if title:find(query_lower, 1, true) or
+       id:find(query_lower, 1, true) or
+       description:find(query_lower, 1, true) then
+      table.insert(filtered, task)
+    end
+  end
+
+  return filtered
 end
 
 --- Apply filters from user input string
@@ -347,16 +391,20 @@ function M.show_task_list()
   -- Apply filters to task list
   local filtered_tasks = filters.apply_filters(task_list, filter_state)
 
+  -- Apply search filter
+  filtered_tasks = filter_by_search(filtered_tasks, search_query)
+
   -- Format and display tasks
   local lines = { "# Beads Tasks" }
   task_lines_map = {} -- Reset the map
 
   -- Add status bar with task count and filter info
-  local status_bar = ""
+  local status_bar = "Tasks: " .. #filtered_tasks .. "/" .. #task_list
+  if search_query and search_query ~= "" then
+    status_bar = status_bar .. " | Search: '" .. search_query .. "'"
+  end
   if filters.has_active_filters(filter_state) then
-    status_bar = "Tasks: " .. #filtered_tasks .. "/" .. #task_list .. " | Filters: " .. filters.get_filter_description(filter_state)
-  else
-    status_bar = "Tasks: " .. #filtered_tasks .. "/" .. #task_list
+    status_bar = status_bar .. " | Filters: " .. filters.get_filter_description(filter_state)
   end
   table.insert(lines, "─ " .. status_bar .. " " .. string.rep("─", math.max(0, 78 - #status_bar)))
   table.insert(lines, "")
@@ -506,6 +554,28 @@ function M.show_task_list()
   -- Toggle sidebar visibility
   vim.keymap.set("n", "t", function()
     M.toggle_sidebar()
+  end, opts)
+
+  -- Search/filter functionality
+  vim.keymap.set("n", "/", function()
+    vim.ui.input({ prompt = "Search tasks (or leave empty to clear): " }, function(input)
+      if input == "" or input == nil then
+        M.set_search_query(nil)
+      else
+        M.set_search_query(input)
+      end
+      -- Refresh task list with new search
+      M.refresh_task_list()
+    end)
+  end, opts)
+
+  -- Clear search with backspace
+  vim.keymap.set("n", "<Backspace>", function()
+    if search_query and search_query ~= "" then
+      M.set_search_query(nil)
+      M.refresh_task_list()
+      vim.notify("Search cleared", vim.log.levels.INFO)
+    end
   end, opts)
 end
 
