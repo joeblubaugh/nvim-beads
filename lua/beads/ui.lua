@@ -310,6 +310,16 @@ function M.show_task_detail(id)
     return
   end
 
+  -- Debug: print response structure
+  vim.notify("DEBUG: response type = " .. type(response), vim.log.levels.INFO)
+  if type(response) == "table" then
+    vim.notify("DEBUG: response[1] = " .. tostring(response[1]), vim.log.levels.INFO)
+    if response[1] and type(response[1]) == "table" then
+      vim.notify("DEBUG: response[1].id = " .. tostring(response[1].id), vim.log.levels.INFO)
+      vim.notify("DEBUG: response[1].title = " .. tostring(response[1].title), vim.log.levels.INFO)
+    end
+  end
+
   -- Handle both array and object responses from bd show
   local task
   if type(response) == "table" then
