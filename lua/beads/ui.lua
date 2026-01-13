@@ -507,7 +507,7 @@ function M.show_task_list()
   task_lines_map = {} -- Reset the map
 
   -- Add status bar with task count and filter info
-  local status_bar = "Tasks: " .. #filtered_tasks .. "/" .. #task_list
+  local status_bar = "Tasks: " .. #filtered_tasks .. "/" .. #current_tasks
   if search_query and search_query ~= "" then
     status_bar = status_bar .. " | Search: '" .. search_query .. "'"
   end
