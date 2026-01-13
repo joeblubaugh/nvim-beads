@@ -19,15 +19,12 @@ local cli = require("beads.cli")
 local filters = require("beads.filters")
 local theme = require("beads.theme")
 local utils = require("beads.utils")
+local windows = require("beads.ui_windows")
 
 -- UI state
-local task_list_bufnr = nil
-local task_list_winid = nil
 local current_tasks = {}
 local task_lines_map = {} -- Map from line number to task ID for navigation
 local sidebar_visible = false -- Track sidebar visibility for toggle
-local preview_bufnr = nil -- Preview window buffer
-local preview_winid = nil -- Preview window ID
 
 -- Filter state
 local filter_state = {
@@ -52,14 +49,9 @@ end
 
 --- Toggle sidebar visibility
 function M.toggle_sidebar()
-  if task_list_winid and vim.api.nvim_win_is_valid(task_list_winid) then
+  if windows.task_list_winid and vim.api.nvim_win_is_valid(windows.task_list_winid) then
     -- Hide sidebar and preview
-    if preview_winid and vim.api.nvim_win_is_valid(preview_winid) then
-      vim.api.nvim_win_close(preview_winid, false)
-      preview_winid = nil
-    end
-    vim.api.nvim_win_close(task_list_winid, false)
-    task_list_winid = nil
+    windows.close_windows()
     sidebar_visible = false
     vim.notify("Sidebar hidden", vim.log.levels.INFO)
   else
