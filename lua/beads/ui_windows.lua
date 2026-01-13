@@ -45,6 +45,7 @@ function M.create_float_window()
     col = col,
     style = "minimal",
     border = "rounded",
+    zindex = 50,
   })
 
   vim.api.nvim_win_set_option(winid, "cursorline", true)
@@ -151,6 +152,7 @@ function M.show_task_preview(task)
     height = height,
     style = "minimal",
     border = "rounded",
+    zindex = 100,
   })
 
   vim.api.nvim_win_set_option(M.preview_winid, "cursorline", true)
