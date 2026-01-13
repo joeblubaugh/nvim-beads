@@ -520,7 +520,7 @@ function M.show_task_list()
   table.insert(lines, "")
 
   if #filtered_tasks == 0 then
-    if #task_list > 0 then
+    if #current_tasks > 0 then
       table.insert(lines, "No tasks match active filters")
     else
       table.insert(lines, "No tasks available")
@@ -540,7 +540,7 @@ function M.show_task_list()
       task_idx = task_idx + 1
     end
     table.insert(lines, "")
-    table.insert(lines, "(" .. #filtered_tasks .. "/" .. #task_list .. " tasks)")
+    table.insert(lines, "(" .. #filtered_tasks .. "/" .. #current_tasks .. " tasks)")
   end
 
   vim.api.nvim_buf_set_lines(task_list_bufnr, 0, -1, false, lines)
