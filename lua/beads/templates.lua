@@ -34,15 +34,18 @@ local json = vim.json
 -- Get the templates directory path
 local function get_templates_dir()
   local cwd = vim.fn.getcwd()
-  return cwd .. "/.beads/templates"
+  return vim.fn.fnamemodify(cwd .. "/.beads/templates", ":p")
 end
 
 -- Get the plugin root directory
+-- Note: Assumes file structure: plugin_root/lua/beads/templates.lua
+-- This is the standard structure for nvim plugins installed via lazy, packer, etc.
 local function get_plugin_root()
   local info = debug.getinfo(1, "S")
   local source = info.source
   local path = source:match("@?(.*)")
   local templates_lua_path = vim.fn.fnamemodify(path, ":p")
+  -- Navigate: lua/beads/templates.lua -> lua/beads -> lua -> plugin_root
   return vim.fn.fnamemodify(templates_lua_path, ":h:h:h")
 end
 
@@ -60,14 +63,14 @@ function M.load_template(template_name)
     -- Check if directory exists
     local stat = vim.loop.fs_stat(templates_dir)
     if not stat or stat.type ~= "directory" then
-      return nil
+      return nil, nil
     end
 
     -- Try JSON first
     local json_path = templates_dir .. "/" .. template_name .. ".json"
     local ok, content = pcall(vim.fn.readfile, json_path)
     if not ok or not content then
-      return nil
+      return nil, nil
     end
 
     local decode_ok, template = pcall(function()
@@ -76,20 +79,26 @@ function M.load_template(template_name)
     end)
 
     if not decode_ok or not template then
-      return nil
+      return nil, "corrupted"
     end
 
     if M.validate_template(template) then
-      return template
+      return template, nil
     end
 
-    return nil
+    return nil, "corrupted"
   end
 
   -- Try user templates first
-  local template = try_load_from_dir(get_templates_dir())
+  local user_dir = get_templates_dir()
+  local template, error_type = try_load_from_dir(user_dir)
   if template then
     return template
+  end
+
+  -- If user template exists but is corrupted, notify
+  if error_type == "corrupted" then
+    vim.notify("User template corrupted, using default: " .. template_name, vim.log.levels.WARN)
   end
 
   -- Fall back to default templates
@@ -170,6 +179,7 @@ function M.list_templates()
     table.insert(merged, template_name)
   end
 
+  vim.notify(vim.inspect(merged))
   -- Then add default templates not already seen
   for _, template_name in ipairs(default_templates) do
     if not seen[template_name] then
@@ -204,16 +214,19 @@ function M.get_template(template_name)
     return nil
   end
 
-  -- Apply defaults
-  if not template.fields.priority then
-    template.fields.priority = "P2"
+  -- Create deep copy to avoid mutating cached template
+  local result = vim.tbl_deep_extend("force", {}, template)
+
+  -- Apply defaults to copy only
+  if not result.fields.priority then
+    result.fields.priority = "P2"
   end
 
-  if not template.fields.status then
-    template.fields.status = "open"
+  if not result.fields.status then
+    result.fields.status = "open"
   end
 
-  return template
+  return result
 end
 
 --- Create a new template

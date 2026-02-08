@@ -194,6 +194,13 @@ function M.setup()
     vim.notify("Theme auto-detected from background: " .. theme.get_current_theme(), vim.log.levels.INFO)
   end, { desc = "Auto-detect theme from background setting" })
 
+  -- Helper function to validate template list
+  local function validate_template_list()
+    local templates = require("beads.templates")
+    local template_list = templates.list_templates()
+    return validation.require_non_empty_list(template_list, "No templates found") and template_list or nil
+  end
+
   -- List available templates
   vim.api.nvim_create_user_command("BeadsListTemplates", function(opts)
     local template_list = validate_template_list()
@@ -217,13 +224,6 @@ function M.setup()
 
     vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
   end, { desc = "Show recommended workflow templates" })
-
-  -- Helper function to validate template list
-  local function validate_template_list()
-    local templates = require("beads.templates")
-    local template_list = templates.list_templates()
-    return validation.require_non_empty_list(template_list, "No templates found") and template_list or nil
-  end
 
   -- Helper function for template-based task creation
   local function create_task_from_template(template_name)
