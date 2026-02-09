@@ -34,38 +34,80 @@ local json = vim.json
 -- Get the templates directory path
 local function get_templates_dir()
   local cwd = vim.fn.getcwd()
-  return cwd .. "/.beads/templates"
+  return vim.fn.fnamemodify(cwd .. "/.beads/templates", ":p")
+end
+
+-- Get the plugin root directory
+-- Note: Assumes file structure: plugin_root/lua/beads/templates.lua
+-- This is the standard structure for nvim plugins installed via lazy, packer, etc.
+local function get_plugin_root()
+  local info = debug.getinfo(1, "S")
+  local source = info.source
+  local path = source:match("@?(.*)")
+  local templates_lua_path = vim.fn.fnamemodify(path, ":p")
+  -- Navigate: lua/beads/templates.lua -> lua/beads -> lua -> plugin_root
+  return vim.fn.fnamemodify(templates_lua_path, ":h:h:h")
+end
+
+-- Get the default templates directory in the plugin
+local function get_default_templates_dir()
+  local plugin_root = get_plugin_root()
+  return plugin_root .. "/.beads/templates"
 end
 
 --- Load a template from file
 --- @param template_name string Name of the template (without extension)
 --- @return table|nil Template data or nil if not found
 function M.load_template(template_name)
-  local templates_dir = get_templates_dir()
+  local function try_load_from_dir(templates_dir)
+    -- Check if directory exists
+    local stat = vim.loop.fs_stat(templates_dir)
+    if not stat or stat.type ~= "directory" then
+      return nil, nil
+    end
 
-  -- Try JSON first
-  local json_path = templates_dir .. "/" .. template_name .. ".json"
-  local ok, content = pcall(vim.fn.readfile, json_path)
-  if not ok or not content then
-    -- Template file not found or couldn't be read
-    return nil
+    -- Try JSON first
+    local json_path = templates_dir .. "/" .. template_name .. ".json"
+    local ok, content = pcall(vim.fn.readfile, json_path)
+    if not ok or not content then
+      return nil, nil
+    end
+
+    local decode_ok, template = pcall(function()
+      local json_str = table.concat(content, "\n")
+      return json.decode(json_str)
+    end)
+
+    if not decode_ok or not template then
+      return nil, "corrupted"
+    end
+
+    if M.validate_template(template) then
+      return template, nil
+    end
+
+    return nil, "corrupted"
   end
 
-  local decode_ok, template = pcall(function()
-    local json_str = table.concat(content, "\n")
-    return json.decode(json_str)
-  end)
-
-  if not decode_ok or not template then
-    vim.notify("Failed to decode template: " .. template_name, vim.log.levels.WARN)
-    return nil
-  end
-
-  if M.validate_template(template) then
+  -- Try user templates first
+  local user_dir = get_templates_dir()
+  local template, error_type = try_load_from_dir(user_dir)
+  if template then
     return template
   end
 
-  vim.notify("Template has invalid structure: " .. template_name, vim.log.levels.WARN)
+  -- If user template exists but is corrupted, notify
+  if error_type == "corrupted" then
+    vim.notify("User template corrupted, using default: " .. template_name, vim.log.levels.WARN)
+  end
+
+  -- Fall back to default templates
+  template = try_load_from_dir(get_default_templates_dir())
+  if template then
+    return template
+  end
+
+  vim.notify("Template not found: " .. template_name, vim.log.levels.WARN)
   return nil
 end
 
@@ -93,33 +135,59 @@ end
 --- Get all available templates
 --- @return table List of template names
 function M.list_templates()
-  local templates_dir = get_templates_dir()
-
-  -- Check if directory exists
-  local stat = vim.loop.fs_stat(templates_dir)
-  if not stat or stat.type ~= "directory" then
-    return {}
-  end
-
-  local templates = {}
-  local scan_dir = vim.loop.fs_scandir(templates_dir)
-  if not scan_dir then
-    return {}
-  end
-
-  while true do
-    local name, typ = vim.loop.fs_scandir_next(scan_dir)
-    if not name then
-      break
+  local function get_templates_from_dir(templates_dir)
+    -- Check if directory exists
+    local stat = vim.loop.fs_stat(templates_dir)
+    if not stat or stat.type ~= "directory" then
+      return {}
     end
 
-    if typ == "file" and name:match("%.json$") then
-      local template_name = name:gsub("%.json$", "")
-      table.insert(templates, template_name)
+    local templates = {}
+    local scan_dir = vim.loop.fs_scandir(templates_dir)
+    if not scan_dir then
+      return {}
+    end
+
+    while true do
+      local name, typ = vim.loop.fs_scandir_next(scan_dir)
+      if not name then
+        break
+      end
+
+      if typ == "file" and name:match("%.json$") then
+        local template_name = name:gsub("%.json$", "")
+        table.insert(templates, template_name)
+      end
+    end
+
+    return templates
+  end
+
+  -- Get user templates
+  local user_templates = get_templates_from_dir(get_templates_dir())
+
+  -- Get default templates
+  local default_templates = get_templates_from_dir(get_default_templates_dir())
+
+  -- Merge with user templates taking precedence
+  local seen = {}
+  local merged = {}
+
+  -- First add user templates
+  for _, template_name in ipairs(user_templates) do
+    seen[template_name] = true
+    table.insert(merged, template_name)
+  end
+
+  vim.notify(vim.inspect(merged))
+  -- Then add default templates not already seen
+  for _, template_name in ipairs(default_templates) do
+    if not seen[template_name] then
+      table.insert(merged, template_name)
     end
   end
 
-  return templates
+  return merged
 end
 
 --- Create template directory if it doesn't exist
@@ -146,16 +214,19 @@ function M.get_template(template_name)
     return nil
   end
 
-  -- Apply defaults
-  if not template.fields.priority then
-    template.fields.priority = "P2"
+  -- Create deep copy to avoid mutating cached template
+  local result = vim.tbl_deep_extend("force", {}, template)
+
+  -- Apply defaults to copy only
+  if not result.fields.priority then
+    result.fields.priority = "P2"
   end
 
-  if not template.fields.status then
-    template.fields.status = "open"
+  if not result.fields.status then
+    result.fields.status = "open"
   end
 
-  return template
+  return result
 end
 
 --- Create a new template
