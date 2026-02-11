@@ -201,6 +201,34 @@ function M.show_task_preview(task)
     end
   end
 
+  if task.design and task.design ~= "" then
+    table.insert(lines, "")
+    table.insert(lines, "## Design")
+    local design_count = 0
+    for design_line in tostring(task.design):gmatch("[^\n]+") do
+      table.insert(lines, design_line)
+      design_count = design_count + 1
+      if design_count >= 3 then
+        table.insert(lines, "...")
+        break
+      end
+    end
+  end
+
+  if task.notes and task.notes ~= "" then
+    table.insert(lines, "")
+    table.insert(lines, "## Notes")
+    local notes_count = 0
+    for notes_line in tostring(task.notes):gmatch("[^\n]+") do
+      table.insert(lines, notes_line)
+      notes_count = notes_count + 1
+      if notes_count >= 3 then
+        table.insert(lines, "...")
+        break
+      end
+    end
+  end
+
   error_handling.safe_api_call(vim.api.nvim_buf_set_lines, M.preview_bufnr, 0, -1, false, lines)
   error_handling.safe_api_call(vim.api.nvim_buf_set_option, M.preview_bufnr, "modifiable", false)
 
