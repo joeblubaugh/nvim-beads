@@ -7,28 +7,50 @@ local cli = require("beads.cli")
 local utils = require("beads.utils")
 local rendering = require("beads.ui_rendering")
 
---- Parse title, description, and priority from editor buffer lines
+--- Parse title, description, priority, design, and notes from editor buffer lines
 local function parse_editor_content(lines)
   local parsed_title = ""
   local parsed_description = ""
   local parsed_priority = "P2"
+  local parsed_design = ""
+  local parsed_notes = ""
   local in_title = false
   local in_description = false
   local in_priority = false
+  local in_design = false
+  local in_notes = false
 
   for i, line in ipairs(lines) do
     if line == "## Title" then
       in_title = true
       in_description = false
       in_priority = false
+      in_design = false
+      in_notes = false
     elseif line == "## Description" then
       in_title = false
       in_description = true
       in_priority = false
+      in_design = false
+      in_notes = false
     elseif line == "## Priority" then
       in_title = false
       in_description = false
       in_priority = true
+      in_design = false
+      in_notes = false
+    elseif line == "## Design" then
+      in_title = false
+      in_description = false
+      in_priority = false
+      in_design = true
+      in_notes = false
+    elseif line == "## Notes" then
+      in_title = false
+      in_description = false
+      in_priority = false
+      in_design = false
+      in_notes = true
     elseif in_title and line ~= "" then
       parsed_title = line
       in_title = false
@@ -37,10 +59,14 @@ local function parse_editor_content(lines)
     elseif in_priority and line ~= "" then
       parsed_priority = line
       in_priority = false
+    elseif in_design and line ~= "" then
+      parsed_design = (parsed_design == "" and line or parsed_design .. "\n" .. line)
+    elseif in_notes and line ~= "" then
+      parsed_notes = (parsed_notes == "" and line or parsed_notes .. "\n" .. line)
     end
   end
 
-  return parsed_title, parsed_description, parsed_priority
+  return parsed_title, parsed_description, parsed_priority, parsed_design, parsed_notes
 end
 
 --- Show detailed view of a specific task
@@ -97,6 +123,22 @@ function M.show_task_detail(id, refresh_callback)
     end
   end
 
+  if task.design and task.design ~= "" then
+    table.insert(lines, "")
+    table.insert(lines, "## Design")
+    for design_line in tostring(task.design):gmatch("[^\n]+") do
+      table.insert(lines, design_line)
+    end
+  end
+
+  if task.notes and task.notes ~= "" then
+    table.insert(lines, "")
+    table.insert(lines, "## Notes")
+    for notes_line in tostring(task.notes):gmatch("[^\n]+") do
+      table.insert(lines, notes_line)
+    end
+  end
+
   if task.comments then
     table.insert(lines, "")
     table.insert(lines, "## Comments")
@@ -137,6 +179,8 @@ function M.show_task_detail(id, refresh_callback)
       title = task.title or task.name or "",
       description = task.description or "",
       priority = task.priority or "P2",
+      design = task.design or "",
+      notes = task.notes or "",
     }, refresh_callback)
   end, opts)
 
@@ -185,6 +229,8 @@ function M.show_task_editor(mode, initial_data, refresh_callback)
   local parent_id = initial_data.parent_id
   local priority = initial_data.priority or "P2"
   local from_template = initial_data.from_template or false
+  local design = initial_data.design or ""
+  local notes = initial_data.notes or ""
 
   -- Prepare content with instructions
   local content = {}
@@ -216,10 +262,30 @@ function M.show_task_editor(mode, initial_data, refresh_callback)
   table.insert(content, "## Priority")
   table.insert(content, tostring(priority))
   table.insert(content, "")
+  table.insert(content, "## Design")
+  local design_str = tostring(design)
+  if design_str ~= "" then
+    for line in design_str:gmatch("[^\n]+") do
+      table.insert(content, line)
+    end
+  else
+    table.insert(content, "")
+  end
+  table.insert(content, "")
+  table.insert(content, "## Notes")
+  local notes_str = tostring(notes)
+  if notes_str ~= "" then
+    for line in notes_str:gmatch("[^\n]+") do
+      table.insert(content, line)
+    end
+  else
+    table.insert(content, "")
+  end
+  table.insert(content, "")
   table.insert(content, "---")
   table.insert(content, "")
   table.insert(content, "Instructions:")
-  table.insert(content, "- Edit title, description, and priority above the --- line")
+  table.insert(content, "- Edit title, description, priority, design, and notes above the --- line")
   table.insert(content, "- Priority must be P1 (high), P2 (medium), or P3 (low)")
   if mode == "create" or mode == "create_child" then
     table.insert(content, "- Press <C-s> to create task")
@@ -238,7 +304,7 @@ function M.show_task_editor(mode, initial_data, refresh_callback)
   -- Helper function to handle save/create
   local function handle_save()
     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local parsed_title, parsed_description, parsed_priority = parse_editor_content(lines)
+    local parsed_title, parsed_description, parsed_priority, parsed_design, parsed_notes = parse_editor_content(lines)
 
     -- Validate input
     if parsed_title == "" then
@@ -251,6 +317,8 @@ function M.show_task_editor(mode, initial_data, refresh_callback)
       local opts = {
         description = parsed_description,
         priority = parsed_priority,
+        design = parsed_design,
+        notes = parsed_notes,
       }
       local result, err = cli.create(parsed_title, opts)
       if not result then
@@ -268,6 +336,8 @@ function M.show_task_editor(mode, initial_data, refresh_callback)
       local opts = {
         description = parsed_description,
         priority = parsed_priority,
+        design = parsed_design,
+        notes = parsed_notes,
       }
       local result, err = cli.create_child(parent_id, parsed_title, opts)
       if not result then
@@ -290,6 +360,12 @@ function M.show_task_editor(mode, initial_data, refresh_callback)
       end
       if parsed_priority ~= priority then
         update_opts.priority = parsed_priority
+      end
+      if parsed_design ~= design then
+        update_opts.design = parsed_design
+      end
+      if parsed_notes ~= notes then
+        update_opts.notes = parsed_notes
       end
 
       if next(update_opts) then

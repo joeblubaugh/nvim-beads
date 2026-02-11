@@ -263,6 +263,14 @@ function M.update(id, opts)
     table.insert(args, "--description")
     table.insert(args, opts.description)
   end
+  if opts.design then
+    table.insert(args, "--design")
+    table.insert(args, opts.design)
+  end
+  if opts.notes then
+    table.insert(args, "--notes")
+    table.insert(args, opts.notes)
+  end
 
   local result, err = run_command("update", args)
 
